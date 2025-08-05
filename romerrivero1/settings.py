@@ -42,18 +42,8 @@ EMAIL_USE_TLS = env.EMAIL_USE_TLS
 EMAIL_HOST_USER = env.EMAIL_HOST_USER
 EMAIL_HOST_PASSWORD = env.EMAIL_HOST_PASSWORD
 DEFAULT_FROM_EMAIL = env.DEFAULT_FROM_EMAIL
-# settings.py
-
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_HOST = 'smtp.gmail.com'
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = 'mdabrahon926@gmail.com'  # Your Gmail address
-# EMAIL_HOST_PASSWORD = 'ab12 cd34 ef56 gh78'  # Use the generated App Password here
-# DEFAULT_FROM_EMAIL = "abrahon@gmail.com"
 
 
-# Application definition
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -78,11 +68,13 @@ INSTALLED_APPS = [
     'drf_yasg',
     'accounts',
     'common',
+    'b2c.products',
     'b2c.game_store',
     'b2c.reviews',
     'b2c.payments',
-    'b2c.dashboard',
     'b2c.user_info',
+    'b2c.cart',
+
 
     
 ]
