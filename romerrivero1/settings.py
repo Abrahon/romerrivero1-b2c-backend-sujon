@@ -26,6 +26,8 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 
+# ALLOWED_HOSTS = ['*',127.0.0.1', 'localhost', 'b2b-b2c-romerrivero1.onrender.com']
+ALLOWED_HOSTS = ['*','https://b2b-b2c-romerrivero1.onrender.com', 'localhost', '127.0.0.1']
 
 
 # Quick-start development settings - unsuitable for production
@@ -40,9 +42,8 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
+# ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = os.getenv('EMAIL_HOST')
@@ -101,6 +102,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     
     # Add this line:
     'allauth.account.middleware.AccountMiddleware',  # Django Allauth middleware
@@ -206,6 +208,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
