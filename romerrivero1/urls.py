@@ -23,6 +23,8 @@ urlpatterns = [
     path('api/',include('b2c.user_info.urls')), 
     path('api/',include('b2c.products.urls')), 
     path('api/',include('b2c.cart.urls')), 
+    path('api/',include('b2c.checkout.urls')), 
+    path('api/orders/',include('b2c.orders.urls')), 
 
     
 ]

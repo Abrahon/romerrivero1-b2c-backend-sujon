@@ -25,7 +25,7 @@ class Products(TimeStampedModel):
     slug = models.SlugField(max_length=255, unique=True, blank=True)
     description = models.CharField(max_length=255)
     price = models.DecimalField(max_digits=12, decimal_places=2)
-    stock_quantity = models.PositiveIntegerField()
+    stock = models.PositiveIntegerField()
     is_active = models.BooleanField(default=True)
     image = models.ImageField(upload_to='product_images/', blank=True, null=True)
     rating = models.FloatField(default=0.0)  

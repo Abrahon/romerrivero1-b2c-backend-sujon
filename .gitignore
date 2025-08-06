@@ -1,0 +1,17 @@
+# Ignore the .env file for secrets
+.env
+
+# Ignore SQLite database file
+db.sqlite3
+
+# Ignore Python bytecode files
+*.pyc
+__pycache__/
+
+# Ignore virtual environments
+venv/
+env/
+
+# Ignore static and media files (generated during production)
+/static/
+/media/

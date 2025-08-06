@@ -74,8 +74,8 @@ INSTALLED_APPS = [
     'b2c.payments',
     'b2c.user_info',
     'b2c.cart',
-
-
+    'b2c.checkout',
+    'b2c.orders',
     
 ]
 

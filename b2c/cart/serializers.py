@@ -18,3 +18,13 @@ class CartItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = CartItem
         fields = ['id', 'product', 'product_id', 'quantity', 'added_at']
+
+        def validate(sel,data):
+            product = data.get('product')
+            quantity = data.get('quantity')
+            if product and quantity:
+                if product.stock<quantity:
+                    raise serializers.ValidationError(f"only {product.stock} item available in the stock")
+                return data
+            
+            
