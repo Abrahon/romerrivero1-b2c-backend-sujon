@@ -25,6 +25,7 @@ urlpatterns = [
     path('api/',include('b2c.cart.urls')), 
     path('api/',include('b2c.checkout.urls')), 
     path('api/orders/',include('b2c.orders.urls')), 
+    path('api/payment/',include('b2c.payments.urls')), 
 
     
 ]

@@ -32,12 +32,15 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # settings.py
+# ALLOWED_HOSTS = ['*']
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
+
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
@@ -134,6 +137,10 @@ SIMPLE_JWT = {
 #     'BLACKLIST_AFTER_ROTATION': True,
 #     'AUTH_HEADER_TYPES': ('Bearer',),
 # }
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:5173',  # Frontend development server
+    'http://localhost:3000',  # Another possible frontend server
+]
 
 TEMPLATES = [
     {
