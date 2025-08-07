@@ -285,3 +285,6 @@ if DEBUG:
 # ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost').split(',')
 
 ALLOWED_HOSTS = ['*', 'localhost', '127.0.0.1', 'b2b-b2c-romerrivero1.onrender.com']
+
+        # In your settings.py
+ROOT_URLCONF = 'romerrivero1.urls' 
