@@ -98,6 +98,9 @@ TEMPLATES = [
         },
     },
 ]
+
+
+
 AUTH_USER_MODEL = 'accounts.User'  # Or whatever custom user model you've defined
 
 # Static files settings
