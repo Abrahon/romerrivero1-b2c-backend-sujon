@@ -22,7 +22,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Load environment variables from the .env file
 load_dotenv(os.path.join(BASE_DIR, '.env'))
 
-
+CORS_ALLOWED_ORIGINS
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 
@@ -139,9 +139,10 @@ SIMPLE_JWT = {
 #     'BLACKLIST_AFTER_ROTATION': True,
 #     'AUTH_HEADER_TYPES': ('Bearer',),
 # }
+
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',  # Frontend development server
-    'http://localhost:3000',  # Another possible frontend server
+    'http://localhost:5173/',  # Frontend development server
+    'http://localhost:3000/',  # Another possible frontend server
 ]
 
 TEMPLATES = [
