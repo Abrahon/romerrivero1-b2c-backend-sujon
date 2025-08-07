@@ -6,6 +6,9 @@ from dotenv import load_dotenv
 # Load environment variables from the .env file
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(os.path.join(BASE_DIR, '.env'))
+DEBUG = True
+print(f"DEBUG is set to: {DEBUG}")
+
 
 # Application definition
 INSTALLED_APPS = [
@@ -54,7 +57,7 @@ MIDDLEWARE = [
 # Security settings
 ALLOWED_HOSTS = ['*', 'localhost', '127.0.0.1', 'b2b-b2c-romerrivero1.onrender.com']
 SECRET_KEY = os.getenv('SECRET_KEY')
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
+# DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 # Stripe settings
 STRIPE_PUBLIC_KEY = os.getenv('STRIPE_PUBLIC_KEY')
