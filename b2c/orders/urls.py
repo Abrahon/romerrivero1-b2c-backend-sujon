@@ -1,8 +1,28 @@
+
+
+# from django.urls import path
+# from .views import OrderListView, OrderSummaryView, PlaceOrderView
+
+# urlpatterns = [
+#     path('', OrderListView.as_view(), name='order-list'),
+#     path('summary/', OrderSummaryView.as_view(), name='order-summary'),
+#     path('place/', PlaceOrderView.as_view(), name='place-order'),
+# ]
+# b2c/orders/urls.py
+
+# b2c/orders/urls.py
+
 from django.urls import path
-from .views import OrderSummaryView, PlaceOrderView,CreateOrderView
+from .views import OrderListView, OrderDetailView, PlaceOrderView
 
 urlpatterns = [
-    path('summary/', OrderSummaryView.as_view(), name='order-summary'),
-    path('place/', PlaceOrderView.as_view(), name='order-place'),
-    path('create/', CreateOrderView.as_view(), name='create-order'),
+    # List user's orders (order history screen)
+    path('', OrderListView.as_view(), name='order-list'),
+    
+    # Detailed order (items + metadata)
+    path('<int:pk>/', OrderDetailView.as_view(), name='order-detail'),
+    
+    # Place an order from the cart
+    path('place/', PlaceOrderView.as_view(), name='place-order'),
 ]
+

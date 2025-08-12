@@ -16,17 +16,30 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/',include('accounts.urls')),
-    path('api/',include('b2c.user_info.urls')), 
+    path('api/',include('support.urls')),
+    path('api/notifications/', include('notifications.urls')),
+    
     path('api/',include('b2c.products.urls')), 
-    path('api/',include('b2c.cart.urls')), 
+    path('api/cart/',include('b2c.cart.urls')), 
     path('api/',include('b2c.checkout.urls')), 
     path('api/orders/',include('b2c.orders.urls')), 
     path('api/payment/',include('b2c.payments.urls')), 
     path('api/',include('b2c.reviews.urls')), 
+    path('api/messages/',include('b2c.chat.urls')),
+     path('api/accounts/', include('accounts.urls')), 
+    path('api/',include('b2c.user_profile.urls')),        
+    # admin
+    path('api/',include('b2c.admin.admin_profile.urls')),
+    # path('api/', include('b2c.admin.admnin_profile.urls')),
+    path('api/admin/', include('b2c.admin.add_product.urls')),
+    path('api/', include('b2c.admin.coupons.urls')),
+
 
     
-]
+]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
