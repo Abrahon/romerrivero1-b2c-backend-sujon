@@ -1,11 +1,11 @@
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, serializers
 from .models import CartItem
 from .serializers import CartItemSerializer
-
+from b2c.products.models import Products
 
 class CartItemListCreateView(generics.ListCreateAPIView):
     serializer_class = CartItemSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]  # Require login
 
     def get_queryset(self):
         return CartItem.objects.filter(user=self.request.user)
@@ -14,21 +14,19 @@ class CartItemListCreateView(generics.ListCreateAPIView):
         user = self.request.user
         product = serializer.validated_data['product']
         quantity = serializer.validated_data['quantity']
-        cart_item,created = CartItem.objects.get_or_create(
-            user = user,
-            product = product,
-            defaults={'quantity', quantity}
 
+        cart_item, created = CartItem.objects.get_or_create(
+            user=user,
+            product=product,
+            defaults={'quantity': quantity}
         )
-        # serializer.save(user=self.request.user)
+
         if not created:
-            new_quantity = cart_item.quantity+quantity
-            if product.stock<new_quantity:
-                raise serializers.ValidationError(f"Only {product.stock} items available")
-            cart_item = quantity = new_quantity
+            new_quantity = cart_item.quantity + quantity
+            if product.stock < new_quantity:
+                raise serializers.ValidationError(f"Only {product.stock} items available.")
+            cart_item.quantity = new_quantity
             cart_item.save()
-
-
 
 
 class CartItemUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
@@ -46,3 +44,4 @@ class CartItemUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
             raise serializers.ValidationError(f"Only {product.stock} items available.")
         
         serializer.save()
+    

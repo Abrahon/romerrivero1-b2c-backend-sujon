@@ -9,13 +9,18 @@ from b2c.products.models import Products
 from b2c.orders.models import Order, OrderItem
 from b2c.orders.serializers import OrderDetailSerializer
 from notifications.models import Notification
-# from notifications.utils import send_user_notification
-# b2c/orders/views.py
+
 from rest_framework import generics, filters
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Order
 from .serializers import OrderListSerializer
+from .serializers import OrderTrackingSerializer
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from django.shortcuts import get_object_or_404
+
 
 class OrderListView(generics.ListAPIView):
     """
@@ -39,29 +44,27 @@ class OrderListView(generics.ListAPIView):
         )
 
 
+
 class PlaceOrderView(generics.CreateAPIView):
     """
     POST /api/orders/place/
-    Body: none (uses authenticated user's cart + latest shipping)
+    Place an order from the user's cart + latest shipping
     """
-    permission_classes = [AllowAny]
-    serializer_class = OrderDetailSerializer  # response serializer
+    permission_classes = [IsAuthenticated]
+    serializer_class = OrderDetailSerializer
 
     @transaction.atomic
     def post(self, request, *args, **kwargs):
         user = request.user
-        
-        # Check if the cart is empty
+
         cart_qs = CartItem.objects.filter(user=user).select_related("product")
         if not cart_qs.exists():
             return Response({"detail": "Cart is empty."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Get the latest shipping information
         shipping = Shipping.objects.filter(user=user).last()
         if not shipping:
             return Response({"detail": "Shipping information missing."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Create the order and items within a transaction
         order = Order.objects.create(
             user=user,
             shipping_address=str(shipping),
@@ -76,40 +79,34 @@ class PlaceOrderView(generics.CreateAPIView):
             qty = cart_item.quantity
             price = getattr(product, "price", Decimal("0.00"))
 
-            # Stock management (ensure there’s enough stock)
-            if hasattr(product, "stock"):
-                if product.stock < qty:
-                    transaction.set_rollback(True)
-                    return Response(
-                        {"detail": f"Insufficient stock for {product.name}"}, status=status.HTTP_400_BAD_REQUEST
-                    )
-                product.stock -= qty
-                product.save(update_fields=["stock"])
-            elif hasattr(product, "count_in_stock"):
-                if product.count_in_stock < qty:
-                    transaction.set_rollback(True)
-                    return Response(
-                        {"detail": f"Insufficient stock for {product.name}"}, status=status.HTTP_400_BAD_REQUEST
-                    )
-                product.count_in_stock -= qty
-                product.save(update_fields=["count_in_stock"])
+            if product.stock < qty:
+                transaction.set_rollback(True)
+                return Response(
+                    {"detail": f"Insufficient stock for {product.name}."}, status=status.HTTP_400_BAD_REQUEST
+                )
+            product.stock -= qty
+            product.save(update_fields=["stock"])
 
-            # Create the order item
             OrderItem.objects.create(order=order, product=product, quantity=qty, price_at_time=price)
             total += price * qty
 
         order.total_amount = total
         order.save(update_fields=["total_amount"])
 
-        # Clear the user's cart after the order is placed
         cart_qs.delete()
 
-        # Create a notification for the user
+        # Send notification to the user
         notification = Notification.objects.create(
             user=user,
             title="Order Placed",
             message=f"Your order #{order.id} has been placed successfully. Total: {total}"
         )
+
+        return Response(self.get_serializer(order).data, status=status.HTTP_201_CREATED)
+
+
+
+
 class OrderDetailView(generics.RetrieveAPIView):
     """
     GET /api/orders/<pk>/ -> Detailed order (items + metadata).
@@ -120,13 +117,67 @@ class OrderDetailView(generics.RetrieveAPIView):
     def get_queryset(self):
         # Ensure the user can only view their own orders
         return Order.objects.filter(user=self.request.user).prefetch_related("items__product")
-        
-        # # Send the user notification
-        # send_user_notification(user.id, notification.id)
 
-        # # Optionally, trigger payment processing if needed
-        # # process_payment(order)  # Placeholder for actual payment logic
 
-        # # Return the created order data
-        # serializer = self.get_serializer(order)
-        # return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+# class OrderTrackingView(generics.RetrieveAPIView):
+#     """
+#     Track order by order_number or id.
+#     Example: /api/orders/track/<order_id_or_number>/
+#     """
+#     serializer_class = OrderTrackingSerializer
+#     permission_classes = [IsAuthenticated]
+#     # permission_classes = [AllowAny]
+    
+    
+#     def get_queryset(self):
+           
+#            order_identifier = self.kwargs.get("pk")
+#            try:
+#             # First try by ID
+#             return Order.objects.get(id=order_identifier, user=self.request.user)
+#            except Order.DoesNotExist:
+               
+#             try:
+#                 return Order.objects.get(order_number=order_identifier, user=self.request.user)
+#             except Order.DoesNotExist:
+#                 return None
+            
+#     def get(self, request, *args, **kwargs):
+#         order = self.get_object()
+#         if not order:
+#             return Response(
+#                 {"detail": "Order not found or you don’t have permission."},
+#                 status=status.HTTP_404_NOT_FOUND,
+#             )
+#         serializer = self.get_serializer(order)
+#         return Response(serializer.data, status=status.HTTP_200_OK)
+
+            
+#         # Ensure the user can only view their own orders
+#         # return Order.objects.filter(user=self.request.user).select_related("user")
+
+class OrderTrackingView(generics.RetrieveAPIView):
+    serializer_class = OrderTrackingSerializer
+    lookup_url_kwarg = "order_identifier"
+
+    def get_object(self):
+        order_identifier = self.kwargs.get("order_identifier")
+
+        if not order_identifier:  # safety check
+            return None
+
+        # Case 1: Numeric ID
+        if order_identifier.isdigit():
+            return Order.objects.filter(id=int(order_identifier)).first()
+
+        # Case 2: Order Number (string with hyphen etc.)
+        return Order.objects.filter(order_number=order_identifier).first()
+
+    def get(self, request, *args, **kwargs):
+        order = self.get_object()
+        if order:
+            serializer = self.get_serializer(order)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response({"detail": "Order not found"}, status=status.HTTP_404_NOT_FOUND)

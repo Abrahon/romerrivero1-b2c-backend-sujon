@@ -10,7 +10,7 @@ def send_order_confirmation_email(sender, instance, created, **kwargs):
         # Send order confirmation email when the order is created
         send_mail(
             subject=f"Order Confirmation - {instance.id}",
-            message=f"Your order {instance.id} has been confirmed. Total: {instance.total_price}",
-            from_email="no-reply@yourdomain.com",
+            message=f"Your order {instance.id} has been confirmed. Total: {instance.total_amount}",
+            from_email="mdabrahon926@gmail.com",
             recipient_list=[instance.user.email],
         )

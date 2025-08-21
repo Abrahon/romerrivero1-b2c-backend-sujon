@@ -13,7 +13,7 @@
 # b2c/orders/urls.py
 
 from django.urls import path
-from .views import OrderListView, OrderDetailView, PlaceOrderView
+from .views import OrderListView, OrderDetailView, PlaceOrderView, OrderTrackingView
 
 urlpatterns = [
     # List user's orders (order history screen)
@@ -24,5 +24,7 @@ urlpatterns = [
     
     # Place an order from the cart
     path('place/', PlaceOrderView.as_view(), name='place-order'),
+    # order tracking
+    path("track/<str:pk>/", OrderTrackingView.as_view(), name="order-tracking"),
 ]
 

@@ -20,7 +20,7 @@ def create_notification(user, notification_type, title, message, send_ws=True):
         # serialize
         payload = NotificationSerializer(notif).data
         channel_layer = get_channel_layer()
-        group_name = f"notifications_user_{user.id}"
+        group_name = f"notifications_user_{user.id}"   
         async_to_sync(channel_layer.group_send)(
             group_name,
             {

@@ -14,6 +14,11 @@ from django.core.files import File
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework import status, generics
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from .models import Wishlist, Product
+from .serializers import WishlistSerializer
 
 
 # Category APIs
@@ -40,8 +45,6 @@ class ProductRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView)
   
   
 #bulk upload APIs(like csv)
-
-
 class BulkUploadProductView(APIView):
     """
     Bulk upload products via CSV.
@@ -98,3 +101,57 @@ class BulkUploadProductView(APIView):
             return Response({"detail": f"Error processing file: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
     
     permission_classes = [AllowAny]
+
+    # wishlist a product
+
+
+class WishlistListCreateView(generics.ListCreateAPIView):
+    serializer_class = WishlistSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Wishlist.objects.filter(user=self.request.user)
+
+    def post(self, request, *args, **kwargs):
+        product_id = request.data.get("product_id")
+        if not product_id:
+            return Response({"error": "Product ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            return Response({"error": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        wishlist_item, created = Wishlist.objects.get_or_create(
+            user=request.user, product=product
+        )
+
+        if not created:
+            return Response({"message": "Product already in wishlist"}, status=status.HTTP_200_OK)
+
+        serializer = self.get_serializer(wishlist_item)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+# my wishlist 
+class MyWishlistView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = WishlistSerializer
+
+    def get_queryset(self):
+        return Wishlist.objects.filter(user=self.request.user).select_related("product")
+
+# delete wishlist
+class WishlistDeleteView(generics.DestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, *args, **kwargs):
+        product_id = request.data.get("product_id")
+        if not product_id:
+            return Response({"error": "Product ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            wishlist_item = Wishlist.objects.get(user=request.user, product_id=product_id)
+            wishlist_item.delete()
+            return Response({"message": "Removed from wishlist"}, status=status.HTTP_200_OK)
+        except Wishlist.DoesNotExist:
+            return Response({"error": "Product not in wishlist"}, status=status.HTTP_404_NOT_FOUND)

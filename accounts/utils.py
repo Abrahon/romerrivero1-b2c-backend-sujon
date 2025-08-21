@@ -17,7 +17,7 @@ def send_otp_email(email, otp_code):
             Your One-Time Password (OTP) for account verification is:
         </p>
         <div style="text-align:center;margin:20px 0;">
-            <span style="display:inline-block;background-color:#007bff;color:#fff;font-size:24px;font-weight:bold;padding:10px 20px;border-radius:8px;">
+            <span style="display:inline -block;background-color:#007bff;color:#fff;font-size:24px;font-weight:bold;padding:10px 20px;border-radius:8px;">
                 {otp_code}
             </span>
         </div>

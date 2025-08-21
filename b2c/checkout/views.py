@@ -1,34 +1,15 @@
-from django.shortcuts import render
+# b2c/shipping/views.py
+
 from rest_framework import generics, permissions
-from .serializers import ShippingSerializer
 from .models import Shipping
-from rest_framework.permissions import AllowAny
-
-# Create your views here.
-
-# class ShippingListCreateView(generics.ListCreateAPIView):
-#     serializer_class = ShippingSerializer
-#     # permission_classes = [permissions.IsAuthenticated]
-#     permission_classes = [AllowAny]
-
-#     def get_queryset(self):
-#         return Shipping.objects.filter(user=self.request.usen    r)
-    
-#     def perform_create(self, serializer):
-#         serializer.save(user=self.request.user)
-
-from rest_framework.permissions import IsAuthenticated
+from .serializers import ShippingSerializer
 
 class ShippingListCreateView(generics.ListCreateAPIView):
     serializer_class = ShippingSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated] 
 
     def get_queryset(self):
         return Shipping.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
-
-        
-    
-

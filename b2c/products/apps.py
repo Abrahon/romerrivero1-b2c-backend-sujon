@@ -1,6 +1,5 @@
 from django.apps import AppConfig
 
-
 class ProductsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'b2c.products'
+    name = 'b2c.products'  # Unique app label for B2C

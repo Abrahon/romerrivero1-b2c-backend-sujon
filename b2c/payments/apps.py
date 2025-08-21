@@ -7,4 +7,4 @@ class PaymentsConfig(AppConfig):
 
     def ready(self):
         import b2c.payments.signals
-    
+     

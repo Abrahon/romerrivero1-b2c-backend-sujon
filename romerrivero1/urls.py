@@ -27,18 +27,24 @@ urlpatterns = [
     
     path('api/',include('b2c.products.urls')), 
     path('api/cart/',include('b2c.cart.urls')), 
-    path('api/',include('b2c.checkout.urls')), 
+    path('api/shipping/',include('b2c.checkout.urls')), 
+    # path('api/shipping/', include('b2c.shipping.urls')),
     path('api/orders/',include('b2c.orders.urls')), 
     path('api/payment/',include('b2c.payments.urls')), 
     path('api/',include('b2c.reviews.urls')), 
     path('api/messages/',include('b2c.chat.urls')),
-     path('api/accounts/', include('accounts.urls')), 
-    path('api/',include('b2c.user_profile.urls')),        
+    path('api/accounts/', include('accounts.urls')), 
+    path('api/',include('b2c.user_profile.urls')),          
     # admin
     path('api/',include('b2c.admin.admin_profile.urls')),
     # path('api/', include('b2c.admin.admnin_profile.urls')),
     path('api/admin/', include('b2c.admin.add_product.urls')),
     path('api/', include('b2c.admin.coupons.urls')),
+    # b2b
+    path('b2b/api/', include('b2b.product.urls')),
+    # path('b2b/api/', include('b2b.inquiries.urls')),
+    path('b2b/api/', include('b2b.connections.urls')),
+
 
 
     
