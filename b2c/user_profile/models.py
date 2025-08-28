@@ -12,7 +12,7 @@ from .enums import Gender
 
 
 class UserProfile(TimeStampedModel):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,  related_name="user_profile")
     profile_image = models.ImageField(upload_to='profiles/', null=True, blank=True)
 
     # Profile information

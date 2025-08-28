@@ -1,53 +1,85 @@
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from django_filters.rest_framework import DjangoFilterBackend
+import csv
+from django.conf import settings
 from .models import Product
 from .serializers import ProductSerializer
-import csv, os
-from django.conf import settings
-from django.core.files import File
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework import status, generics
-from rest_framework.permissions import AllowAny
-from rest_framework import generics
-from .models import Category, Product
-from .serializers import CategorySerializer, ProductSerializer
+from django.core.exceptions import ValidationError
+from django_filters import rest_framework as filters
+from django_filters.rest_framework import DjangoFilterBackend
 
+# Admin Views - List, Create, Update and Delete
+class AdminProductListCreateView(generics.ListCreateAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    permission_classes = [permissions.IsAdminUser]
 
-# Admin Views Read,write,update and delete
+    def perform_create(self, serializer):
+        try:
+            # Save the product
+            serializer.save()
+        except ValidationError as e:
+            # Handle validation errors
+            return Response({"detail": f"Validation Error: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+# Admin Views - Update and Delete a Product
 class AdminProductCreateUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-    # Only admin can create, update or delete products.
-    permission_classes = [permissions.IsAdminUser]  
+    permission_classes = [permissions.IsAdminUser]
 
-    def perform_create(self, serializer):
+    def update(self, request, *args, **kwargs):
+        try:
+            # Get the product to update
+            product = self.get_object()
+            
+            # Update the product with the new data from the request
+            serializer = self.get_serializer(product, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        except Product.DoesNotExist:
+            return Response({"detail": "Product not found."}, status=status.HTTP_404_NOT_FOUND)
         
-        serializer.save(seller=self.request.user)
+        
+    def delete(self, request, *args, **kwargs):
+        try:
+            product = self.get_object()  
+            product.delete()  
+            return Response({"message": "Product deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+        except Product.DoesNotExist:
+            return Response({"message": "Product not found."}, status=status.HTTP_404_NOT_FOUND)
+        
 
+# User Views - List Products and Filter by Category
+class ProductFilter(filters.FilterSet):
+    category = filters.CharFilter(field_name="category", lookup_expr="iexact")
 
-# User Views (Product List and Details)
+    class Meta:
+        model = Product
+        fields = ["category"]
+
 class ProductListView(generics.ListAPIView):
+    queryset = Product.objects.all()
     serializer_class = ProductSerializer
-    # Anyone can view products
-    permission_classes = [permissions.AllowAny]  
-
-    def get_queryset(self):
-        """Allow filtering by category"""
-        queryset = Product.objects.all()
-        category = self.request.query_params.get('category', None)
-        if category:
-            queryset = queryset.filter(category__name=category)
-        return queryset
+    permission_classes = [AllowAny]  
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = ProductFilter
 
 
+# Product Detail View for User
 class ProductDetailView(generics.RetrieveAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-    # Anyone can view product details
-    permission_classes = [permissions.AllowAny] 
-    
+    permission_classes = [AllowAny]  
 
+# Bulk Upload Products via CSV
 class BulkUploadProductView(APIView):
     """
     Bulk upload products via CSV.
@@ -57,9 +89,8 @@ class BulkUploadProductView(APIView):
             return Response({"detail": "No file provided."}, status=status.HTTP_400_BAD_REQUEST)
 
         file = request.FILES['file']
-        
+
         try:
-            # Reading the uploaded CSV file
             file_data = file.read().decode('utf-8').splitlines()
             reader = csv.DictReader(file_data)
 
@@ -68,30 +99,25 @@ class BulkUploadProductView(APIView):
 
             for row in reader:
                 try:
-                    # Extract category or create it
                     category_name = row['category']
                     category, created = Category.objects.get_or_create(name=category_name)
 
-                    # Prepare product data
                     product_data = {
                         'title': row['title'],
                         'product_code': row['product_code'],
-                        'discount': row['discount'],
                         'category': category,
                         'color': row['color'],
                         'available_stock': row['available_stock'],
                         'price': row['price'],
-                        'description': row['description']
+                        'description': row['description'],
                     }
 
-                    # Validate and save the product using the serializer
                     product_serializer = ProductSerializer(data=product_data)
                     if product_serializer.is_valid():
                         product_serializer.save()
                         created_products.append(product_serializer.data)
                     else:
                         failed_rows.append({"row": row, "error": product_serializer.errors})
-
                 except Exception as e:
                     failed_rows.append({"row": row, "error": str(e)})
 
@@ -102,8 +128,6 @@ class BulkUploadProductView(APIView):
 
         except Exception as e:
             return Response({"detail": f"Error processing file: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
-    
-    permission_classes = [AllowAny]
 
-   
+    permission_classes = [AllowAny]  # Allow anyone to upload products
 

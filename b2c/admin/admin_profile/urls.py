@@ -9,4 +9,8 @@ urlpatterns = [
     path("companies/<int:pk>/", views.CompanyDetailsRetrieveUpdateDestroyAPIView.as_view(), name="company-detail"),
 
     path("notifications/", views.AdminNotificationListAPIView.as_view(), name="admin-notification-list"),
+    # email security
+    path("profile/email-preferences/",views. EmailSecurityDetailUpdateView.as_view(), name="email-preferences"),
+    path("profile/change-password/",views. ChangePasswordView.as_view(), name="change-password"),
+   
 ]

@@ -21,8 +21,8 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/',include('accounts.urls')),
-    path('api/',include('support.urls')),
+    path('b2c/api/',include('accounts.urls')),
+    path('b2c/api/',include('support.urls')),
     path('api/notifications/', include('notifications.urls')),
     
     path('api/',include('b2c.products.urls')), 
@@ -33,7 +33,7 @@ urlpatterns = [
     path('api/payment/',include('b2c.payments.urls')), 
     path('api/',include('b2c.reviews.urls')), 
     path('api/messages/',include('b2c.chat.urls')),
-    path('api/accounts/', include('accounts.urls')), 
+    # path('b2c/api/accounts/', include('accounts.urls')),    
     path('api/',include('b2c.user_profile.urls')),          
     # admin
     path('api/',include('b2c.admin.admin_profile.urls')),
@@ -41,9 +41,12 @@ urlpatterns = [
     path('api/admin/', include('b2c.admin.add_product.urls')),
     path('api/', include('b2c.admin.coupons.urls')),
     # b2b
+    path('b2b/api/', include('b2b.analytics.urls')),
     path('b2b/api/', include('b2b.product.urls')),
-    # path('b2b/api/', include('b2b.inquiries.urls')),
+    path('b2b/api/', include('b2b.inquiries.urls')),
+    path('b2b/api/', include('b2b.order.urls')),
     path('b2b/api/', include('b2b.connections.urls')),
+    path('b2b/api/', include('b2b.customer.urls')),
 
 
 
