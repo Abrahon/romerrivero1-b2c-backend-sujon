@@ -4,6 +4,7 @@ from django.shortcuts import render
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import get_user_model
 from .serializers import SignupSerializer, LoginSerializer
 from .models import User
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -114,33 +115,26 @@ class ResetPasswordView(generics.GenericAPIView):
 
 
 
-# class ChangePasswordView(generics.UpdateAPIView):
-#     serializer_class = ChangePasswordSerializer
-#     permission_classes = [IsAuthenticated]
-
-#     def get_object(self):
-#         return self.request.user
-
-
-
-
 class AdminCreateView(generics.CreateAPIView):
-    permission_classes = [IsAdminUser]  # Only admins can create other admins
+    permission_classes = [IsAdminUser]  # Only admins can access
 
     def post(self, request, *args, **kwargs):
-        username = request.data.get('username')
-        password = request.data.get('password')
         email = request.data.get('email')
-     
-        # Ensure the password is not empty
-        if not password or not username or not email:
-            return Response({"detail": "Username, password, and email are required."}, status=status.HTTP_400_BAD_REQUEST)
+        password = request.data.get('password')
+        name = request.data.get('name')
 
-        # Create superuser/admin
+        if not email or not password or not name:
+            return Response({"detail": "Name, email, and password are required."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            user = User.objects.create_superuser(username=username, email=email, password=password)
+            user = User.objects.create_superuser(
+                email=email,
+                password=password,
+                name=name
+            )
         except Exception as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response({'detail': 'Admin user created successfully'}, status=status.HTTP_201_CREATED)
-
+        return Response({"detail": "Admin user created successfully"},
+                        status=status.HTTP_201_CREATED)

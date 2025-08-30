@@ -7,7 +7,7 @@ from accounts.models import User
 
 class AdminProfile(models.Model):
     """Admin profile information."""
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="admin_profile", default=1)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="admin_profile", default=1)
     first_name = models.CharField(max_length=255)
     last_name = models.CharField(max_length=255)
     job_title = models.CharField(max_length=255)

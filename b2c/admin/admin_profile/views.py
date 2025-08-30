@@ -58,7 +58,7 @@ class AdminNotificationListAPIView(generics.ListAPIView):
 
 class EmailSecurityDetailUpdateView(generics.RetrieveUpdateAPIView):
     serializer_class = EmailSecuritySerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]
 
     def get_object(self):
         # Ensure the current logged-in user always manages their own EmailSecurity
@@ -67,7 +67,7 @@ class EmailSecurityDetailUpdateView(generics.RetrieveUpdateAPIView):
 
 
 class ChangePasswordView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]
 
     def put(self, request):
         return self._change_password(request)

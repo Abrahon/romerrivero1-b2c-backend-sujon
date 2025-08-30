@@ -56,7 +56,7 @@ class SendOTPSerializer(serializers.Serializer):
         code = generate_otp()
         OTP.objects.create(user=user, code=code)
         send_otp_email(user.email, code)
-        return user  # Return user instance here
+        return user 
 
     def to_representation(self, instance):
         # Return a custom response instead of trying to serialize the user object fields
