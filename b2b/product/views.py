@@ -12,6 +12,61 @@ from django.core.exceptions import ValidationError
 from django_filters import rest_framework as filters
 from django_filters.rest_framework import DjangoFilterBackend
 
+from rest_framework import generics, permissions, status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from .models import Category
+from .serializers import CategorySerializer
+
+
+# ==============================
+# Admin Views (CRUD for Category)
+# ==============================
+class AdminCategoryListCreateView(generics.ListCreateAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [permissions.IsAdminUser]
+
+    def perform_create(self, serializer):
+        serializer.save()
+
+
+class AdminCategoryUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [permissions.IsAdminUser]
+
+    def delete(self, request, *args, **kwargs):
+        try:
+            category = self.get_object()
+            category.delete()
+            return Response({"message": "Category deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+        except Category.DoesNotExist:
+            return Response({"message": "Category not found."}, status=status.HTTP_404_NOT_FOUND)
+
+
+# ==============================
+# Public Views (Users)
+# ==============================
+class CategoryListView(generics.ListAPIView):
+    """
+    List all categories (for users).
+    """
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [AllowAny]
+
+
+class CategoryDetailView(generics.RetrieveAPIView):
+    """
+    Get details of a specific category.
+    """
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [AllowAny]
+
+
 # Admin Views - List, Create, Update and Delete
 class AdminProductListCreateView(generics.ListCreateAPIView):
     queryset = Product.objects.all()
@@ -25,6 +80,7 @@ class AdminProductListCreateView(generics.ListCreateAPIView):
         except ValidationError as e:
             # Handle validation errors
             return Response({"detail": f"Validation Error: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
 
 # Admin Views - Update and Delete a Product
 class AdminProductCreateUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):

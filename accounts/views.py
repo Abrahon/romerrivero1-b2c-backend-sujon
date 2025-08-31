@@ -137,4 +137,4 @@ class AdminCreateView(generics.CreateAPIView):
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({"detail": "Admin user created successfully"},
-                        status=status.HTTP_201_CREATED)
+                        status=status.HTTP_201_CREATED) 
