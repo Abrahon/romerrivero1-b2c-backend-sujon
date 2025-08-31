@@ -7,13 +7,12 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from .serializers import SignupSerializer, LoginSerializer
 from .models import User
-from rest_framework.permissions import AllowAny, IsAuthenticated
+# from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny
 from django.contrib.auth.models import User
 from rest_framework.permissions import AllowAny, IsAdminUser
-from django.contrib.auth import get_user_model
 
+User = get_user_model()  
 
 from rest_framework.permissions import IsAuthenticated
 # from django.contrib.auth import make_random_password
@@ -72,6 +71,15 @@ class SendOTPView(generics.CreateAPIView):
     serializer_class = SendOTPSerializer
     permission_classes = [AllowAny]
 
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        # Store user's email in session so VerifyOTPView can identify the user without asking for email
+        request.session['otp_user_email'] = user.email
+
+        return Response({"message": "OTP sent successfully"}, status=status.HTTP_200_OK)
 
 
 class VerifyOTPView(generics.GenericAPIView):
@@ -79,13 +87,14 @@ class VerifyOTPView(generics.GenericAPIView):
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
 
-        # Store verified email in session
-        request.session['verified_email'] = serializer.validated_data['email']
+        # OTP verified → keep email in session for password reset
+        request.session['verified_email'] = serializer.validated_data["user"].email
 
         return Response({"message": "OTP verified successfully."})
+
 
 
 
@@ -94,24 +103,30 @@ class ResetPasswordView(generics.GenericAPIView):
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
+        # Retrieve the email from session
         verified_email = request.session.get("verified_email")
 
         if not verified_email:
-            return Response({"detail": "OTP verification required."}, status=400)
+            return Response({"detail": "OTP verification required."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Find the user by email stored in session
         user = User.objects.filter(email=verified_email).first()
 
         if not user:
-            return Response({"detail": "User not found."}, status=400)
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
+        # Use the user to reset the password
         serializer = self.get_serializer(data=request.data, context={'user': user})
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
         # Clean up the session
-        del request.session['verified_email']
+        if "verified_email" in request.session:
+            del request.session["verified_email"]
 
-        return Response({"message": "Password reset successfully."})
+        return Response({"message": "Password reset successfully."}, status=status.HTTP_200_OK)
+
+
 
 
 

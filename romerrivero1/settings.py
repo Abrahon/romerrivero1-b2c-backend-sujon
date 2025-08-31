@@ -286,8 +286,9 @@ CHANNEL_LAYERS = {
     },
 }
 
-# settings.py
-# ACCOUNT_SIGNUP_FIELDS = ['email', 'username', 'password1', 'password2']
+# session for reset password 
+SESSION_COOKIE_AGE = 600  # Session will expire after 10 minutes of inactivity
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Expire session when the browser is closed
 
 
 MIDDLEWARE = [
