@@ -18,7 +18,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from .models import Category
 from .serializers import CategorySerializer
-
+from rest_framework.parsers import MultiPartParser, FormParser
 
 # ==============================
 # Admin Views (CRUD for Category)
@@ -72,6 +72,7 @@ class AdminProductListCreateView(generics.ListCreateAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     permission_classes = [permissions.IsAdminUser]
+    parser_classes = (MultiPartParser, FormParser) 
 
     def perform_create(self, serializer):
         try:

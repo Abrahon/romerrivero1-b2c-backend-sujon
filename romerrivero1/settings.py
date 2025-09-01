@@ -261,6 +261,7 @@ INSTALLED_APPS = [
 
     # b2b
     'b2b.product',
+    'b2b.accounts_b',
     'b2b.inquiries',
     'b2b.connections',
     'b2b.order',
@@ -290,7 +291,12 @@ CHANNEL_LAYERS = {
 SESSION_COOKIE_AGE = 600  # Session will expire after 10 minutes of inactivity
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Expire session when the browser is closed
 
+import os
 
+ALLOWED_HOSTS = ["*"]  # or ["your-service-name.onrender.com"]
+
+# If using static files
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
@@ -410,7 +416,6 @@ if DEBUG:
     # To be used for running the development server only
     CORS_ALLOW_ALL_ORIGINS = True
 
-# ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost').split(',')
 
 ALLOWED_HOSTS = ['*', 'localhost', '127.0.0.1', 'b2b-b2c-romerrivero1.onrender.com']
 
@@ -418,8 +423,8 @@ ALLOWED_HOSTS = ['*', 'localhost', '127.0.0.1', 'b2b-b2c-romerrivero1.onrender.c
 ROOT_URLCONF = 'romerrivero1.urls'
 
 # Login and Logout URL Configurations
-# LOGIN_URL = 'accounts_login'  
-# LOGOUT_URL = 'account_logout'  
-# LOGIN_REDIRECT_URL = 'dashboard'  
-# LOGOUT_REDIRECT_URL = 'userlogin'  
+LOGIN_URL = 'accounts_login'  
+LOGOUT_URL = 'account_logout'  
+LOGIN_REDIRECT_URL = 'dashboard'  
+LOGOUT_REDIRECT_URL = 'userlogin'  
 
