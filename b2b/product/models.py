@@ -3,6 +3,7 @@ import uuid
 import os
 from django.utils.text import slugify
 from django.contrib.postgres.fields import ArrayField
+from django.db import models
 
 
 class Category(models.Model):
@@ -18,17 +19,19 @@ def product_image_path(instance, filename):
     return f'product_images/{slug}-{uuid.uuid4().hex}{ext}'
 
 
+
+
+
 class Product(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=255)
     product_code = models.CharField(max_length=255, unique=True, editable=False)
-    category = models.ForeignKey('Category', on_delete=models.CASCADE, related_name='products')  
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
     color = models.CharField(max_length=50)
     available_stock = models.PositiveIntegerField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.TextField()
-    # Store multiple images in JSON
-    images = models.JSONField(default=list, blank=True)  
+    images = models.JSONField(default=list, blank=True)  # Store multiple images
 
     def save(self, *args, **kwargs):
         if not self.product_code:
@@ -37,3 +40,4 @@ class Product(models.Model):
 
     def __str__(self):
         return self.title
+

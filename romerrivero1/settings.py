@@ -415,7 +415,9 @@ if not DEBUG:
 if DEBUG:
     # To be used for running the development server only
     CORS_ALLOW_ALL_ORIGINS = True
-
+    
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 ALLOWED_HOSTS = ['*', 'localhost', '127.0.0.1', 'b2b-b2c-romerrivero1.onrender.com']
 
