@@ -288,12 +288,12 @@ CHANNEL_LAYERS = {
 }
 
 # session for reset password 
-SESSION_COOKIE_AGE = 600  # Session will expire after 10 minutes of inactivity
-SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Expire session when the browser is closed
+SESSION_COOKIE_AGE = 600  
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True  
 
 import os
 
-ALLOWED_HOSTS = ["*"]  # or ["your-service-name.onrender.com"]
+ALLOWED_HOSTS = ["*"] 
 
 # If using static files
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
@@ -393,6 +393,8 @@ REST_FRAMEWORK = {
       'DEFAULT_PARSER_CLASSES': [
         'rest_framework.parsers.JSONParser',
     ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,  
 }
 
 

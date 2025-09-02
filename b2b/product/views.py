@@ -4,9 +4,31 @@ from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
+from rest_framework import generics, permissions, status, filters as drf_filters
 import csv
-
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser, FormParser
+from django_filters.rest_framework import DjangoFilterBackend
+from django_filters import rest_framework as django_filters
+import csv, uuid, requests
+from django.utils.text import slugify
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+import uuid
+import requests
+from django.utils.text import slugify
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+from rest_framework import permissions
+from rest_framework.views import APIView
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.db.models import Q
 from .models import Product, Category
+from .serializers import ProductSerializer
+
 from .serializers import ProductSerializer, CategorySerializer
 
 
@@ -69,12 +91,49 @@ class CategoryDetailView(generics.RetrieveAPIView):
     permission_classes = [permissions.AllowAny]
 
 
-class ProductFilter(filters.FilterSet):
-    category = filters.CharFilter(field_name="category__name", lookup_expr="iexact")
+class ProductFilter(django_filters.FilterSet):
+    category = django_filters.CharFilter(field_name="category__id", lookup_expr="exact")
 
     class Meta:
         model = Product
         fields = ["category"]
+
+
+class ProductSearchFilterView(APIView):
+    def get(self, request):
+        query = request.query_params.get("q", None)   
+        category = request.query_params.get("category", None)  
+        min_price = request.query_params.get("min_price", None)  #
+        max_price = request.query_params.get("max_price", None)
+
+        products = Product.objects.all()
+
+        # Search by title or description
+        if query:
+            products = products.filter(
+                Q(title__icontains=query) |
+                Q(description__icontains=query)
+            )
+
+        # Filter by category
+        if category:
+            products = products.filter(category__icontains=category)
+
+        # Filter by price range
+        if min_price:
+            products = products.filter(price__gte=min_price)
+        if max_price:
+            products = products.filter(price__lte=max_price)
+
+        # Error handling: no products found
+        if not products.exists():
+            return Response(
+                {"error": "Product not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = ProductSerializer(products, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class ProductListView(generics.ListAPIView):
@@ -96,12 +155,88 @@ class ProductDetailView(generics.RetrieveAPIView):
 # ==============================
 # Bulk Upload Products via CSV
 # ==============================
+# class BulkUploadProductView(APIView):
+#     permission_classes = [permissions.AllowAny]
+#     parser_classes = [MultiPartParser, FormParser] 
+
+#     def post(self, request, *args, **kwargs):
+#         """
+#         CSV format:
+#         title,product_code,category,colors,available_stock,price,description,images
+#         "Pen A","123","Stationery","Red,Blue","50","99.00","Nice pen","pen-a-1.jpg|pen-a-2.jpg"
+#         """
+#         if 'file' not in request.FILES:
+#             return Response({"detail": "No file provided."}, status=status.HTTP_400_BAD_REQUEST)
+
+#         file = request.FILES['file']
+
+#         try:
+#             file_data = file.read().decode('utf-8').splitlines()
+#             reader = csv.DictReader(file_data)
+
+#             created_products = []
+#             failed_rows = []
+
+#             for row in reader:
+#                 try:
+#                     # Category
+#                     category_name = row['category']
+#                     category, _ = Category.objects.get_or_create(name=category_name)
+
+#                     # Colors
+#                     colors = row.get('colors', '')
+#                     if colors:
+#                         if isinstance(colors, str):
+#                             colors = [c.strip() for c in colors.split(',')]
+#                     else:
+#                         colors = []
+
+#                     # Images (CSV should have filenames separated by | )
+#                     images_str = row.get('images', '')
+#                     images_list = [img.strip() for img in images_str.split('|')] if images_str else []
+
+#                     product_data = {
+#                         'title': row['title'],
+#                         'product_code': row.get('product_code') or '',
+#                         'category': category.id,
+#                         'colors': colors,
+#                         'available_stock': row['available_stock'],
+#                         'price': row['price'],
+#                         'description': row['description'],
+#                         'images': images_list  # save image paths in JSONField
+#                     }
+
+#                     serializer = ProductSerializer(data=product_data)
+#                     if serializer.is_valid():
+#                         serializer.save()
+#                         created_products.append(serializer.data)
+#                     else:
+#                         failed_rows.append({"row": row, "error": serializer.errors})
+
+#                 except Exception as e:
+#                     failed_rows.append({"row": row, "error": str(e)})
+
+#             return Response({
+#                 "created_products": created_products,
+#                 "failed_rows": failed_rows,
+#             }, status=status.HTTP_201_CREATED)
+
+#         except Exception as e:
+#             return Response({"detail": f"Error processing file: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+
 class BulkUploadProductView(APIView):
     permission_classes = [permissions.AllowAny]
+    parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request, *args, **kwargs):
+        """
+        CSV format:
+        title,product_code,category,colors,available_stock,price,description,images
+        "Pen A","123","Stationery","Red,Blue","50","99.00","Nice pen","https://example.com/pen-a-1.jpg|https://example.com/pen-a-2.jpg"
+        """
         if 'file' not in request.FILES:
-            return Response({"detail": "No file provided."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "No file provided."}, status=400)
 
         file = request.FILES['file']
 
@@ -114,17 +249,45 @@ class BulkUploadProductView(APIView):
 
             for row in reader:
                 try:
+                    # --- Handle Category ---
                     category_name = row['category']
                     category, _ = Category.objects.get_or_create(name=category_name)
 
+                    # --- Handle Colors ---
+                    colors = row.get('colors', '')
+                    if colors:
+                        if isinstance(colors, str):
+                            colors = [c.strip() for c in colors.split(',')]
+                    else:
+                        colors = []
+
+                    # --- Handle Images ---
+                    images_str = row.get('images', '')
+                    image_paths = []
+                    if images_str:
+                        urls = [u.strip() for u in images_str.split('|') if u.strip()]
+                        for url in urls:
+                            try:
+                                response = requests.get(url)
+                                if response.status_code == 200:
+                                    ext = url.split('.')[-1]
+                                    seo_name = f"{slugify(row['title'])}-{uuid.uuid4().hex}.{ext}"
+                                    full_path = f'product_images/{seo_name}'
+                                    default_storage.save(full_path, ContentFile(response.content))
+                                    image_paths.append(full_path)
+                            except Exception as e:
+                                failed_rows.append({"row": row, "error": f"Image download failed: {str(e)}"})
+
+                    # --- Prepare Product Data ---
                     product_data = {
                         'title': row['title'],
                         'product_code': row.get('product_code') or '',
                         'category': category.id,
-                        'colors': row.get('colors', []),
+                        'colors': colors,
                         'available_stock': row['available_stock'],
                         'price': row['price'],
                         'description': row['description'],
+                        'images': image_paths
                     }
 
                     serializer = ProductSerializer(data=product_data)
@@ -140,7 +303,7 @@ class BulkUploadProductView(APIView):
             return Response({
                 "created_products": created_products,
                 "failed_rows": failed_rows,
-            }, status=status.HTTP_201_CREATED)
+            }, status=201)
 
         except Exception as e:
-            return Response({"detail": f"Error processing file: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": f"Error processing file: {str(e)}"}, status=400)
