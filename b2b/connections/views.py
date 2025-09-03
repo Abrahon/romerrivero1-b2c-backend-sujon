@@ -26,6 +26,8 @@ class ConnectionDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Connection.objects.all()
     serializer_class = ConnectionSerializer
     permission_classes = [IsAdminUser] 
+    parser_classes = (MultiPartParser, FormParser)
+    
     def delete(self, request, *args, **kwargs):
         """
         This method handles the DELETE request to delete a connection.

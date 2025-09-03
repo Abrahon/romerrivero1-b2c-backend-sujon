@@ -22,7 +22,7 @@ class Product(models.Model):
     title = models.CharField(max_length=255)
     product_code = models.CharField(max_length=255, unique=True, editable=False)
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
-    colors = models.JSONField(default=list, blank=True)
+    colors = models.JSONField(default=list)
     available_stock = models.PositiveIntegerField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.TextField()

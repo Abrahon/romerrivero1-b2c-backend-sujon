@@ -71,9 +71,9 @@ class AdminProductCreateUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
         product = self.get_object()
         product.delete()
         return Response({"message": "Product deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+    
 
 # filter ststus 
-
 class StatusProductAPIView(generics.ListAPIView):
     serializer_class = ProductSerializer
     permission_classes = [permissions.IsAdminUser]
@@ -83,7 +83,7 @@ class StatusProductAPIView(generics.ListAPIView):
         status_param = self.request.query_params.get("status")
 
         if status_param:
-            # Normalize: remove trailing slashes
+            # Normalize input
             status_param = status_param.strip().lower()
 
             if status_param == "active":
@@ -92,9 +92,9 @@ class StatusProductAPIView(generics.ListAPIView):
                 queryset = queryset.filter(status=ProductStatus.INACTIVE)
             else:
                 return Product.objects.none()
-        queryset = queryset.filter(status__iexact=ProductStatus.INACTIVE)
 
         return queryset
+
 
 # Admin Views - Bulk Delete Products
 class AdminProductBulkDelete(APIView):
