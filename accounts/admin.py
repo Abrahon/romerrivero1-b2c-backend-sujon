@@ -1,23 +1,23 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import User
 
-@admin.register(User)
-class CustomUserAdmin(UserAdmin):
-    model = User
-    list_display = ('email', 'name', 'role', 'is_staff', 'is_superuser')
-    search_fields = ('email', 'name')
-    ordering = ('email',)
-
+class UserAdmin(BaseUserAdmin):
+    # Define what field is used for login
+    ordering = ['email']
+    list_display = ['email', 'name', 'is_staff', 'is_active']
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        ('Personal info', {'fields': ('name', 'role')}),
+        ('Personal Info', {'fields': ('name',)}),
         ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
-        ('Important dates', {'fields': ('last_login', 'date_joined')}),
+        ('Important dates', {'fields': ('last_login',)}),
     )
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('email', 'name', 'password1', 'password2', 'role', 'is_staff', 'is_superuser'),
-        }),
+            'fields': ('email', 'name', 'password1', 'password2', 'is_staff', 'is_active')}
+        ),
     )
+    search_fields = ('email', 'name')  # Important: don't use 'username'
+
+admin.site.register(User, UserAdmin)

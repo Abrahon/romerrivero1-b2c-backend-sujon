@@ -2,7 +2,6 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
-from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
 from rest_framework import generics, permissions, status, filters as drf_filters
 import csv
@@ -16,7 +15,7 @@ from django.utils.text import slugify
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 import uuid
-import requests
+from .models import ProductStatus
 from django.utils.text import slugify
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
@@ -73,26 +72,29 @@ class AdminProductCreateUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
         product.delete()
         return Response({"message": "Product deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
 
-# ststus views
+# filter ststus 
+
 class StatusProductAPIView(generics.ListAPIView):
+    serializer_class = ProductSerializer
     permission_classes = [permissions.IsAdminUser]
 
-    def get(self, request):
-        status_param = request.query_params.get('status', None)
-        
-        if  status_param:
-            status_param = status_param.lower()
-            if status_param not in ['active','inactive']:
-                return Response(
-                    {"error": "Invalid status. Use 'active' or 'inactive'."},
-                    status=drf_status.HTTP_400_BAD_REQUEST
-                )
-            products = Product.objects.filter(status=status_param)
-        else:
-            products = Product.objects.all()
-        serializer = ProductSerializer(products,many=True)
-        return Response(serializer.data,status=status.HTTP_200_OK)
-        
+    def get_queryset(self):
+        queryset = Product.objects.all()
+        status_param = self.request.query_params.get("status")
+
+        if status_param:
+            # Normalize: remove trailing slashes
+            status_param = status_param.strip().lower()
+
+            if status_param == "active":
+                queryset = queryset.filter(status=ProductStatus.ACTIVE)
+            elif status_param == "inactive":
+                queryset = queryset.filter(status=ProductStatus.INACTIVE)
+            else:
+                return Product.objects.none()
+        queryset = queryset.filter(status__iexact=ProductStatus.INACTIVE)
+
+        return queryset
 
 # Admin Views - Bulk Delete Products
 class AdminProductBulkDelete(APIView):
@@ -189,7 +191,7 @@ class ProductDetailView(generics.RetrieveAPIView):
 
 
 class BulkUploadProductView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAdminUser]
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request, *args, **kwargs):

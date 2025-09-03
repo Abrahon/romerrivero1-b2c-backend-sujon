@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import Connection
 from .serializers import ConnectionSerializer
+from rest_framework.parsers import MultiPartParser, FormParser
 
 class ConnectionListCreateView(generics.ListCreateAPIView):
     """
@@ -11,7 +12,8 @@ class ConnectionListCreateView(generics.ListCreateAPIView):
     """
     queryset = Connection.objects.all()
     serializer_class = ConnectionSerializer
-    permission_classes = [IsAdminUser]  
+    permission_classes = [IsAdminUser]
+    parser_classes = [MultiPartParser, FormParser]
 
     def perform_create(self, serializer):
         return serializer.save()

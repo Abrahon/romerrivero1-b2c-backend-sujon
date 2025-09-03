@@ -27,7 +27,7 @@ class Product(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.TextField()
     images = models.JSONField(default=list, blank=True)
-    status = models.CharField(max_length=20, choices=ProductStatus.choices, default=ProductStatus.ACTIVE)
+    status = models.CharField(max_length=20, choices=ProductStatus.choices, default=ProductStatus.INACTIVE)
 
     def save(self, *args, **kwargs):
         if not self.product_code:
