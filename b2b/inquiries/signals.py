@@ -56,4 +56,4 @@ def create_order_from_inquiry(sender, instance, created, **kwargs):
                 price_at_time=instance.price_at_inquiry,
             )
 
-            # total_amount will automatically update via the post_save signal of OrderItem
+           

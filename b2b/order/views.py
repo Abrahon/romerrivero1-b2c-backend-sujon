@@ -15,16 +15,16 @@ class OrderCreateView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         # Ensure that the order is linked to an inquiry
-        inquiry = get_object_or_404(Inquiry, id=self.request.data.get('inquiry'))  # Get inquiry by ID
+        inquiry = get_object_or_404(Inquiry, id=self.request.data.get('inquiry')) 
         serializer.save(user=self.request.user, inquiry=inquiry)
 
 # Admin can read, update, and delete orders
 class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = OrderSerializer
-    permission_classes = [permissions.IsAdminUser]  # Only admin can access
+    permission_classes = [permissions.IsAdminUser]  
 
     def get_queryset(self):
-        # Admin can see all orders
+       
         return Order.objects.all()
 
     def perform_update(self, serializer):
@@ -41,5 +41,4 @@ class OrderListView(generics.ListAPIView):
     permission_classes = [permissions.IsAdminUser]
 
     def get_queryset(self):
-        # Admin can see all orders
         return Order.objects.all()

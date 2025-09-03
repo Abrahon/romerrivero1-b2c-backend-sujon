@@ -76,6 +76,17 @@ class AdminProductCreateUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
         return Response({"message": "Product deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
 
 
+class AdminProductBulkDelete(APIView):
+    permission_classes = [permissions.IsAdminUser]
+    
+    def delete(self, request, *args, **kwargs):
+        ids = request.data.get("ids", [])
+        if not ids:
+            return Response({"error": "No product IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        deleted_count, _ = Product.objects.filter(id__in=ids).delete()
+        return Response({"message": f"{deleted_count} products deleted successfully"}, status=status.HTTP_200_OK)
+    
 # ==============================
 # User Views
 # ==============================
@@ -150,6 +161,7 @@ class ProductDetailView(generics.RetrieveAPIView):
     permission_classes = [permissions.AllowAny]
     lookup_field = "id"
     lookup_url_kwarg = "id"
+
 
 
 # ==============================
