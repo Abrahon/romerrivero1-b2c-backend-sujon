@@ -28,22 +28,20 @@ from rest_framework import status
 from django.db.models import Q
 from .models import Product, Category
 from .serializers import ProductSerializer
-
+from .enums import ProductStatus
 from .serializers import ProductSerializer, CategorySerializer
+from rest_framework import status as drf_status
 
 
-# ==============================
-# Admin Views (CRUD for Category)
-# ==============================
+# Admin Views CRUD for Category
 class AdminCategoryListCreateView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [permissions.IsAdminUser]
 
 
-# ==============================
+
 # Admin Views - CRUD for Product
-# ==============================
 class AdminProductListCreateView(generics.ListCreateAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
@@ -75,10 +73,31 @@ class AdminProductCreateUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
         product.delete()
         return Response({"message": "Product deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
 
+# ststus views
+class StatusProductAPIView(generics.ListAPIView):
+    permission_classes = [permissions.IsAdminUser]
 
+    def get(self, request):
+        status_param = request.query_params.get('status', None)
+        
+        if  status_param:
+            status_param = status_param.lower()
+            if status_param not in ['active','inactive']:
+                return Response(
+                    {"error": "Invalid status. Use 'active' or 'inactive'."},
+                    status=drf_status.HTTP_400_BAD_REQUEST
+                )
+            products = Product.objects.filter(status=status_param)
+        else:
+            products = Product.objects.all()
+        serializer = ProductSerializer(products,many=True)
+        return Response(serializer.data,status=status.HTTP_200_OK)
+        
+
+# Admin Views - Bulk Delete Products
 class AdminProductBulkDelete(APIView):
     permission_classes = [permissions.IsAdminUser]
-    
+
     def delete(self, request, *args, **kwargs):
         ids = request.data.get("ids", [])
         if not ids:
@@ -86,10 +105,10 @@ class AdminProductBulkDelete(APIView):
         
         deleted_count, _ = Product.objects.filter(id__in=ids).delete()
         return Response({"message": f"{deleted_count} products deleted successfully"}, status=status.HTTP_200_OK)
-    
-# ==============================
+
+
 # User Views
-# ==============================
+
 class CategoryListView(generics.ListAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
@@ -167,74 +186,6 @@ class ProductDetailView(generics.RetrieveAPIView):
 # ==============================
 # Bulk Upload Products via CSV
 # ==============================
-# class BulkUploadProductView(APIView):
-#     permission_classes = [permissions.AllowAny]
-#     parser_classes = [MultiPartParser, FormParser] 
-
-#     def post(self, request, *args, **kwargs):
-#         """
-#         CSV format:
-#         title,product_code,category,colors,available_stock,price,description,images
-#         "Pen A","123","Stationery","Red,Blue","50","99.00","Nice pen","pen-a-1.jpg|pen-a-2.jpg"
-#         """
-#         if 'file' not in request.FILES:
-#             return Response({"detail": "No file provided."}, status=status.HTTP_400_BAD_REQUEST)
-
-#         file = request.FILES['file']
-
-#         try:
-#             file_data = file.read().decode('utf-8').splitlines()
-#             reader = csv.DictReader(file_data)
-
-#             created_products = []
-#             failed_rows = []
-
-#             for row in reader:
-#                 try:
-#                     # Category
-#                     category_name = row['category']
-#                     category, _ = Category.objects.get_or_create(name=category_name)
-
-#                     # Colors
-#                     colors = row.get('colors', '')
-#                     if colors:
-#                         if isinstance(colors, str):
-#                             colors = [c.strip() for c in colors.split(',')]
-#                     else:
-#                         colors = []
-
-#                     # Images (CSV should have filenames separated by | )
-#                     images_str = row.get('images', '')
-#                     images_list = [img.strip() for img in images_str.split('|')] if images_str else []
-
-#                     product_data = {
-#                         'title': row['title'],
-#                         'product_code': row.get('product_code') or '',
-#                         'category': category.id,
-#                         'colors': colors,
-#                         'available_stock': row['available_stock'],
-#                         'price': row['price'],
-#                         'description': row['description'],
-#                         'images': images_list  # save image paths in JSONField
-#                     }
-
-#                     serializer = ProductSerializer(data=product_data)
-#                     if serializer.is_valid():
-#                         serializer.save()
-#                         created_products.append(serializer.data)
-#                     else:
-#                         failed_rows.append({"row": row, "error": serializer.errors})
-
-#                 except Exception as e:
-#                     failed_rows.append({"row": row, "error": str(e)})
-
-#             return Response({
-#                 "created_products": created_products,
-#                 "failed_rows": failed_rows,
-#             }, status=status.HTTP_201_CREATED)
-
-#         except Exception as e:
-#             return Response({"detail": f"Error processing file: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class BulkUploadProductView(APIView):

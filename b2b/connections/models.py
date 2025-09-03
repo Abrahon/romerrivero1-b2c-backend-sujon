@@ -6,6 +6,7 @@ from .enums import CompanyCategory, ConnectionCategory
 
 class Connection(TimeStampedModel):
     name = models.CharField(max_length=255)
+    image = models.ImageField(upload_to='connections/images/', default='default_image.png')
     company_category = models.CharField(
         max_length=20,
         choices=CompanyCategory.choices,  

@@ -8,7 +8,7 @@ class ConnectionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Connection
-        fields = ['id', 'name', 'company_category', 'connection_category', 'email', 'phone', 'address', 'notes', 'is_active']
+        fields = ['id', 'name', 'image','company_category', 'connection_category', 'email', 'phone', 'address', 'notes', 'is_active']
         read_only_fields = ['id']
 
 

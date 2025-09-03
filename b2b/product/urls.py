@@ -1,15 +1,15 @@
 
 from django.urls import path
-from .views import ProductListView, ProductDetailView, AdminProductCreateUpdateDeleteView,BulkUploadProductView,AdminProductListCreateView,AdminCategoryListCreateView,ProductSearchFilterView,AdminProductBulkDelete
+from .views import ProductListView, ProductDetailView, AdminProductCreateUpdateDeleteView,BulkUploadProductView,AdminProductListCreateView,AdminCategoryListCreateView,ProductSearchFilterView,AdminProductBulkDelete,StatusProductAPIView
 
 
 urlpatterns = [
     path("admin/categories/", AdminCategoryListCreateView.as_view(), name="admin-category-list-create"),
-    
-    # Admin CRUD for Products
+
     path("admin/products/<uuid:id>/", AdminProductCreateUpdateDeleteView.as_view(), name="admin-product-detail"),
     path("admin/products/", AdminProductListCreateView.as_view(), name="admin-product-create"),
     path("admin/products/bulk_delete/", AdminProductBulkDelete.as_view(), name="admin-product-bulk-delete"),
+    path("admin/products/", StatusProductAPIView.as_view(), name="admin-status-product-list"),
 
     # User Views
     path('products/search/', ProductSearchFilterView.as_view(), name='product-search'),

@@ -36,9 +36,9 @@ urlpatterns = [
     path('b2c/api/',include('b2c.user_profile.urls')),          
     # admin
     path('b2c/api/',include('b2c.admin.admin_profile.urls')),
-    # path('api/', include('b2c.admin.admnin_profile.urls')),
     path('b2c/api/admin/', include('b2c.admin.add_product.urls')),
     path('b2c/api/', include('b2c.admin.coupons.urls')),
+
     # b2b
     # path('b2b/api/',include('accounts_b.urls')),
     path('b2b/api/', include('b2b.analytics.urls')),
@@ -47,9 +47,6 @@ urlpatterns = [
     path('b2b/api/', include('b2b.order.urls')),
     path('b2b/api/', include('b2b.connections.urls')),
     path('b2b/api/', include('b2b.customer.urls')),
-
-
-
     
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
