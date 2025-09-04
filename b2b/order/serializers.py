@@ -1,5 +1,4 @@
 
-
 from rest_framework import serializers
 from .models import Order, OrderItem
 from b2b.product.models import Product
