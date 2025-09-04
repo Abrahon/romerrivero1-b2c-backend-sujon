@@ -238,7 +238,10 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google',  
     'allauth.socialaccount.providers.facebook',  
     'allauth.socialaccount.providers.twitter', 
-    
+
+    "cloudinary",
+    "cloudinary_storage",
+
     'drf_yasg',
     "channels",
     "notifications",
@@ -267,16 +270,18 @@ INSTALLED_APPS = [
     'b2b.order',
     'b2b.customer',
     'b2b.analytics',
-    
-     
-    
-    
 
 ]
 ASGI_APPLICATION = "romerrivero1.asgi.application"   
 
 SITE_ID = 1
 
+CLOUDINARY_STORAGE = {
+    "CLOUD_NAME": os.getenv("CLOUDINARY_CLOUD_NAME"),
+    "API_KEY": os.getenv("CLOUDINARY_API_KEY"),
+    "API_SECRET": os.getenv("CLOUDINARY_API_SECRET"),
+}
+DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 
 CHANNEL_LAYERS = {
     "default": {
@@ -291,7 +296,6 @@ CHANNEL_LAYERS = {
 SESSION_COOKIE_AGE = 600  
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True  
 
-import os
 
 ALLOWED_HOSTS = ["*"] 
 

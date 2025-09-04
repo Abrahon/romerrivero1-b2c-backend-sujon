@@ -26,7 +26,8 @@ class Product(models.Model):
     available_stock = models.PositiveIntegerField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.TextField()
-    images = models.JSONField(default=list, blank=True)
+    # images = models.JSONField(default=list, blank=True)
+    images = models.ImageField(upload_to="product_images/")
     status = models.CharField(max_length=20, choices=ProductStatus.choices, default=ProductStatus.INACTIVE)
 
     def save(self, *args, **kwargs):
