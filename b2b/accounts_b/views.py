@@ -46,7 +46,7 @@ class B2BSignupView(generics.CreateAPIView):
 
 class B2BLoginView(generics.GenericAPIView):
     serializer_class = B2BLoginSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     # parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request, *args, **kwargs):
@@ -73,7 +73,7 @@ class B2BLoginView(generics.GenericAPIView):
 
 class B2BSendOTPView(generics.CreateAPIView):
     serializer_class = B2BSendOTPSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request, *args, **kwargs):
@@ -89,7 +89,7 @@ class B2BSendOTPView(generics.CreateAPIView):
 
 class B2BVerifyOTPView(generics.GenericAPIView):
     serializer_class = B2BVerifyOTPSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request, *args, **kwargs):
@@ -106,7 +106,7 @@ class B2BVerifyOTPView(generics.GenericAPIView):
 
 class B2BResetPasswordView(generics.GenericAPIView):
     serializer_class = B2BResetPasswordSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request, *args, **kwargs):
