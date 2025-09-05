@@ -11,7 +11,7 @@ from .models import User
 from rest_framework.views import APIView
 from django.contrib.auth.models import User
 from rest_framework.permissions import AllowAny, IsAdminUser
-
+from rest_framework.parsers import MultiPartParser, FormParser
 User = get_user_model()  
 
 from rest_framework.permissions import IsAuthenticated
@@ -21,9 +21,12 @@ from .serializers import (
     SendOTPSerializer, VerifyOTPSerializer, ResetPasswordSerializer, ChangePasswordSerializer
 )
 
+
+
 class SignupView(generics.CreateAPIView):
     serializer_class = SignupSerializer
     permission_classes = [AllowAny]
+    parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -43,7 +46,8 @@ class SignupView(generics.CreateAPIView):
 
 class LoginView(generics.GenericAPIView):
     serializer_class = LoginSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
+    # parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -69,7 +73,8 @@ class LoginView(generics.GenericAPIView):
 
 class SendOTPView(generics.CreateAPIView):
     serializer_class = SendOTPSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -84,7 +89,8 @@ class SendOTPView(generics.CreateAPIView):
 
 class VerifyOTPView(generics.GenericAPIView):
     serializer_class = VerifyOTPSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data, context={"request": request})
@@ -100,7 +106,8 @@ class VerifyOTPView(generics.GenericAPIView):
 
 class ResetPasswordView(generics.GenericAPIView):
     serializer_class = ResetPasswordSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request, *args, **kwargs):
         # Retrieve the email from session

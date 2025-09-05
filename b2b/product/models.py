@@ -4,6 +4,7 @@ import os
 from django.db import models
 from django.utils.text import slugify
 from .enums import ProductStatus
+from django.contrib.postgres.fields import ArrayField
 
 class Category(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -26,8 +27,11 @@ class Product(models.Model):
     available_stock = models.PositiveIntegerField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.TextField()
-    # images = models.JSONField(default=list, blank=True)
-    images = models.ImageField(upload_to="product_images/")
+    images = models.JSONField(blank=True, null=True)
+
+
+    
+
     status = models.CharField(max_length=20, choices=ProductStatus.choices, default=ProductStatus.INACTIVE)
 
     def save(self, *args, **kwargs):

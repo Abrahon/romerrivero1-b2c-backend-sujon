@@ -283,6 +283,20 @@ CLOUDINARY_STORAGE = {
 }
 DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 
+# Database settings (POSTGRES)
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME"),
+        "USER": os.getenv("DB_USER"),
+        "PASSWORD": os.getenv("DB_PASSWORD"),
+        # "HOST": os.getenv("DB_HOST", default="localhost"),
+        
+    }
+}
+
+
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
@@ -332,12 +346,12 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
 
 # Database settings (SQLite)
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3', 
-        'NAME': BASE_DIR / 'db.sqlite3',  
-    }
-}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3', 
+#         'NAME': BASE_DIR / 'db.sqlite3',  
+#     }
+# }
 
 # Static files settings
 STATIC_URL = '/static/'
