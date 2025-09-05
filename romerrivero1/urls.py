@@ -41,6 +41,7 @@ urlpatterns = [
 
     # b2b
     # path('b2b/api/',include('accounts_b.urls')),
+    # path('b2b/api/',include('support.urls')),
     path('b2b/api/', include('b2b.analytics.urls')),
     path('b2b/api/', include('b2b.product.urls')),
     path('b2b/api/', include('b2b.inquiries.urls')),
