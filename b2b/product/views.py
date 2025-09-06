@@ -55,8 +55,8 @@ class AdminProductCreateUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ProductSerializer
     permission_classes = [permissions.IsAdminUser]
     parser_classes = (MultiPartParser, FormParser)
-    lookup_field = "id"        # match model field
-    lookup_url_kwarg = "id"    # match URL kwarg <uuid:id>
+    lookup_field = "id"      
+    lookup_url_kwarg = "id"    
 
     # Update product
     def update(self, request, *args, **kwargs):
