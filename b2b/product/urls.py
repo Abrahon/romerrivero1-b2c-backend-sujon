@@ -1,6 +1,6 @@
 
 from django.urls import path
-from .views import ProductListView, ProductDetailView, AdminProductCreateUpdateDeleteView,BulkUploadProductView,AdminProductListCreateView,AdminCategoryListCreateView,ProductSearchFilterView,AdminProductBulkDelete,StatusProductAPIView
+from .views import ProductListView, ProductDetailView, AdminProductCreateUpdateDeleteView,BulkUploadProductView,AdminProductListCreateView,AdminCategoryListCreateView,ProductSearchFilterView,AdminProductBulkDelete,StatusProductAPIView,FilterProductAPIView
 
 
 urlpatterns = [
@@ -13,6 +13,7 @@ urlpatterns = [
 
     # User Views
     path('products/search/', ProductSearchFilterView.as_view(), name='product-search'),
+    path("admin/products/status/", FilterProductAPIView.as_view(), name="user-filter-product-list"),
     path("products/", ProductListView.as_view(), name="product-list"),
     path("products/<uuid:id>/", ProductDetailView.as_view(), name="product-detail"),
     path("products/bulk_upload/", BulkUploadProductView.as_view(), name="bulk-product-upload"),

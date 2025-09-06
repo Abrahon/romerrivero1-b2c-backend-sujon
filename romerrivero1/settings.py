@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     'b2b.order',
     'b2b.customer',
     'b2b.analytics',
+    'b2b.profiles',
 
 ]
 ASGI_APPLICATION = "romerrivero1.asgi.application"   

@@ -20,7 +20,6 @@ from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from rest_framework import permissions
 from rest_framework.views import APIView
-from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.db.models import Q
@@ -166,8 +165,29 @@ class ProductSearchFilterView(APIView):
 
         serializer = ProductSerializer(products, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
 
+class FilterProductAPIView(generics.ListAPIView):
+    serializer_class = ProductSerializer
+    permission_classes = [permissions.AllowAny]
 
+    def get_queryset(self):
+        queryset = Product.objects.all()
+        status_param = self.request.query_params.get("status")
+
+        if status_param:
+            # Normalize input
+            status_param = status_param.strip().lower()
+
+            if status_param == "active":
+                queryset = queryset.filter(status=ProductStatus.ACTIVE)
+            elif status_param == "inactive":
+                queryset = queryset.filter(status=ProductStatus.INACTIVE)
+            else:
+                return Product.objects.none()
+
+        return queryset
+    
 class ProductListView(generics.ListAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer

@@ -85,6 +85,7 @@ class ProductSerializer(serializers.ModelSerializer):
     # -------------------------------
     def update(self, instance, validated_data):
         colors = self.initial_data.get("colors", None)
+        print("colors update", colors)
         if colors is not None:
             instance.colors = self._normalize_colors(colors)
 
