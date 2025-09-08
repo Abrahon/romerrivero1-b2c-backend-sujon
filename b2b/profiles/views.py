@@ -9,7 +9,7 @@ from .models import (
     CompanyDetails,
     Notification,
     EmailSecurity,
-    AdminSujonProfile,
+    AdminProfile,
 )
 from .serializers import (
     CompanyDetailsSerializer,
@@ -22,7 +22,7 @@ from .serializers import (
 
 # ---------------------- Admin Profile Views ---------------------- #
 class AdminProfileListCreateAPIView(generics.ListCreateAPIView):
-    queryset = AdminSujonProfile.objects.all()
+    queryset = AdminProfile.objects.all()
     serializer_class = AdminProfileSerializer
     permission_classes = [permissions.IsAdminUser]
     parser_classes = (MultiPartParser, FormParser)
@@ -30,7 +30,7 @@ class AdminProfileListCreateAPIView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         """Ensure one AdminProfile per user"""
         user = self.request.user
-        if AdminSujonProfile.objects.filter(user=user).exists():
+        if AdminProfile.objects.filter(user=user).exists():
             raise ValidationError("This user already has an AdminProfile.")
         serializer.save(user=user)
 
@@ -46,8 +46,8 @@ class AdminProfileRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPI
         if not self.request.user.is_superuser:
             raise PermissionDenied("Only admins can access this profile.")
         try:
-            return AdminSujonProfile.objects.get(user=self.request.user)
-        except AdminSujonProfile.DoesNotExist:
+            return AdminProfile.objects.get(user=self.request.user)
+        except AdminProfile.DoesNotExist:
             raise serializers.ValidationError({"error": "Admin profile does not exist."})
 
 

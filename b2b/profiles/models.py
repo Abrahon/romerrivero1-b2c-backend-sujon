@@ -9,7 +9,7 @@ User = get_user_model()
 
 
 
-class AdminSujonProfile(models.Model):
+class AdminProfile(models.Model):
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
@@ -22,7 +22,7 @@ class AdminSujonProfile(models.Model):
     image = models.ImageField(
         upload_to="admin_profile/",
         blank=True,
-        null=False
+        null=True
     )
     def __str__(self):
         return f"{self.first_name} {self.last_name}"

@@ -3,7 +3,7 @@ from .models import CompanyDetails, Notification
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
-from .models import EmailSecurity, AdminSujonProfile
+from .models import EmailSecurity, AdminProfile
 from django.contrib.auth import get_user_model
 
 import uuid
@@ -12,7 +12,7 @@ class AdminProfileSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
 
     class Meta:
-        model = AdminSujonProfile
+        model = AdminProfile
         fields = ["first_name", "last_name", "job_title", "bio", "image", "image_url"]
 
     def get_image_url(self, obj):
@@ -20,17 +20,7 @@ class AdminProfileSerializer(serializers.ModelSerializer):
         if obj.image:
             return request.build_absolute_uri(obj.image.url)
         return None
-
-
-
-
-# class CompanyDetailsSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = CompanyDetails
-#         fields = ['company_name', 'industry_type', 'company_email', 'company_phone', 'company_address', 'image']
-# serializers.py
-from rest_framework import serializers
-from .models import CompanyDetails
+    
 
 class CompanyDetailsSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()

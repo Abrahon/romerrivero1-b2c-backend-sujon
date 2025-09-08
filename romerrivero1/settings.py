@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     'b2b.customer',
     'b2b.analytics',
     'b2b.profiles',
+    'b2b.contact',
 
 ]
 ASGI_APPLICATION = "romerrivero1.asgi.application"   
@@ -146,6 +147,7 @@ EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
+ADMIN_EMAIL = os.getenv('EMAIL_HOST_USER')
 
 # Database settings (SQLite)
 # DATABASES = {
@@ -257,3 +259,11 @@ LOGOUT_URL = 'account_logout'
 LOGIN_REDIRECT_URL = 'dashboard'  
 LOGOUT_REDIRECT_URL = 'userlogin'  
 
+# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# EMAIL_HOST = "smtp.gmail.com"
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = "your_admin_email@gmail.com"
+# EMAIL_HOST_PASSWORD = "your_app_password"  
+# DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+# ADMIN_EMAIL = EMAIL_HOST_USER

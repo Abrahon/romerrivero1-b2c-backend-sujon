@@ -49,6 +49,7 @@ urlpatterns = [
     path('b2b/api/', include('b2b.connections.urls')),
     path('b2b/api/', include('b2b.customer.urls')),
     path('b2b/api/', include('b2b.profiles.urls')),
+    path('b2b/api/', include('b2b.contact.urls')),
     
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
