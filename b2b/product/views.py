@@ -48,6 +48,23 @@ class AdminProductListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         serializer.save()
 
+# Admin view to filter products by category
+class AdminCategoryProductListView(generics.ListAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    permission_classes = [permissions.IsAdminUser]
+
+    def get_queryset(self):
+        category_id = self.kwargs.get("category_id")  # Get category_id from URL
+        try:
+            category = Category.objects.get(id=category_id)  # Ensure the category exists
+        except Category.DoesNotExist:
+            raise Response({"detail": "Category not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Filter products by category
+        return Product.objects.filter(category=category)
+
+
 
 class AdminProductCreateUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Product.objects.all()
@@ -115,6 +132,24 @@ class CategoryListView(generics.ListAPIView):
     serializer_class = CategorySerializer
     permission_classes = [permissions.AllowAny]
 
+# User view to filter products by category
+
+class UserCategoryProductListView(generics.ListAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        category_id = self.kwargs.get("category_id")  # Get category_id from URL
+        try:
+            category = Category.objects.get(id=category_id)  # Ensure the category exists
+        except Category.DoesNotExist:
+            raise Response({"detail": "Category not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Filter products by category
+        return Product.objects.filter(category=category)
+
+
 
 class CategoryDetailView(generics.RetrieveAPIView):
     queryset = Category.objects.all()
@@ -166,27 +201,6 @@ class ProductSearchFilterView(APIView):
         serializer = ProductSerializer(products, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
-
-class FilterProductAPIView(generics.ListAPIView):
-    serializer_class = ProductSerializer
-    permission_classes = [permissions.AllowAny]
-
-    def get_queryset(self):
-        queryset = Product.objects.all()
-        status_param = self.request.query_params.get("status")
-
-        if status_param:
-            # Normalize input
-            status_param = status_param.strip().lower()
-
-            if status_param == "active":
-                queryset = queryset.filter(status=ProductStatus.ACTIVE)
-            elif status_param == "inactive":
-                queryset = queryset.filter(status=ProductStatus.INACTIVE)
-            else:
-                return Product.objects.none()
-
-        return queryset
     
 class ProductListView(generics.ListAPIView):
     queryset = Product.objects.all()

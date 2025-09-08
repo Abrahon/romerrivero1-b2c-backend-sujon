@@ -1,50 +1,72 @@
-from rest_framework import generics, permissions
-from .models import CompanyDetails, Notification
-from .serializers import CompanyDetailsSerializer, NotificationSerializer,ChangePasswordSerializer,EmailSecuritySerializer
-from rest_framework import generics, status, permissions
+from rest_framework import generics, permissions, status
 from rest_framework.response import Response
-from django.contrib.auth.models import User
-from django.contrib.auth import update_session_auth_hash
-# from .models import AdminProfile
-from rest_framework.permissions import IsAdminUser
-from rest_framework import generics, permissions
-from .models import EmailSecurity
-from rest_framework import permissions, status
 from rest_framework.views import APIView
-from rest_framework.response import Response
-from .models import AdminSujonProfile
-from .serializers import AdminProfileSerializer
-from django.contrib.auth import update_session_auth_hash
 from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError, PermissionDenied
+from django.contrib.auth import update_session_auth_hash
+
+from .models import AdminSujonProfile, CompanyDetails, Notification, EmailSecurity
+from .serializers import (
+    AdminProfileSerializer,
+    CompanyDetailsSerializer,
+    NotificationSerializer,
+    ChangePasswordSerializer,
+    EmailSecuritySerializer,
+)
+
+
 
 
 # Admin Profile Views
 class AdminProfileListCreateAPIView(generics.ListCreateAPIView):
     queryset = AdminSujonProfile.objects.all()
     serializer_class = AdminProfileSerializer
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [permissions.IsAdminUser]  
     parser_classes = (MultiPartParser, FormParser)
+
     def perform_create(self, serializer):
-        # Check if the user already has an AdminProfile
         user = self.request.user
+
+        # Check if the current admin user already has a profile
         if AdminSujonProfile.objects.filter(user=user).exists():
-            raise ValidationError("This user already has an AdminProfile.")
-        
-        # If no profile exists, save the new profile
+            print("email", user)
+            raise ValidationError("This admin user already has an AdminProfile.")
+
+        # Save the new profile for the current admin user
         serializer.save(user=user)
+
+
 
 
 class AdminProfileRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = AdminSujonProfile.objects.all()
     serializer_class = AdminProfileSerializer
     permission_classes = [permissions.IsAdminUser]
+    lookup_field = "pk"
+
     def get_object(self):
-        """Override this method to ensure the profile belongs to the current user."""
-        obj = super().get_object()
-        if obj.user != self.request.user:
-            raise PermissionDenied("You do not have permission to edit this profile.")
-        return obj
+        try:
+            return self.request.user.adminsujonprofile
+        except AdminSujonProfile.DoesNotExist:
+            raise PermissionDenied("Profile does not exist for this admin.")
+
+    def put(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+
+    def patch(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        profile = self.get_object()
+        serializer = self.get_serializer(profile, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def destroy(self, request, *args, **kwargs):
+        profile = self.get_object()
+        profile.delete()
+        return Response({"detail": "Profile deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
 
 
 # Company Details Views
