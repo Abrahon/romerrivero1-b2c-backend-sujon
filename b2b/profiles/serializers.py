@@ -9,17 +9,44 @@ from django.contrib.auth import get_user_model
 import uuid
 
 class AdminProfileSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = AdminSujonProfile
-        fields = ["first_name", "last_name", "job_title", "bio", "image"]
+        fields = ["first_name", "last_name", "job_title", "bio", "image", "image_url"]
+
+    def get_image_url(self, obj):
+        request = self.context.get("request")
+        if obj.image:
+            return request.build_absolute_uri(obj.image.url)
+        return None
 
 
+
+
+# class CompanyDetailsSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = CompanyDetails
+#         fields = ['company_name', 'industry_type', 'company_email', 'company_phone', 'company_address', 'image']
+# serializers.py
+from rest_framework import serializers
+from .models import CompanyDetails
 
 class CompanyDetailsSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
     class Meta:
         model = CompanyDetails
-        fields = ['company_name', 'industry_type', 'company_email', 'company_phone', 'company_address', 'image']
+        fields = ['id', 'company_name', 'industry_type', 'company_email', 'company_phone', 'company_address', 'image', 'image_url']
+
+    def get_image_url(self, obj):
+        request = self.context.get('request')
+        if obj.image:
+            return request.build_absolute_uri(obj.image.url)
+        return None
+
+
+
 
 
 class NotificationSerializer(serializers.ModelSerializer):
