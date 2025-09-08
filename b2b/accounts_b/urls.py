@@ -1,5 +1,4 @@
 
-
 from django.urls import path, include
 from .views import B2BSignupView, B2BLoginView, B2BSendOTPView, B2BVerifyOTPView, B2BResetPasswordView, B2BAdminCreateView
 
@@ -12,5 +11,5 @@ urlpatterns = [
     path('admin/create/', B2BAdminCreateView.as_view(), name='admin-create'),
 
     # Social login URLs from django-allauth
-    path('social/', include('allauth.socialaccount.urls')),  # Social login (Google, Facebook, Twitter)
+    path('social/', include('allauth.socialaccount.urls')),  
 ]

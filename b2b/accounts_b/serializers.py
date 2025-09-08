@@ -1,11 +1,12 @@
+# accounts_b/serializers.py
 from rest_framework import serializers
-from django.contrib.auth import authenticate
-from .models import User
-# accounts/serializers.py
-from rest_framework import serializers
-from .models import OTP, User
-from rest_framework import serializers
-from accounts.utils import generate_otp, send_otp_email
+from django.contrib.auth import authenticate, get_user_model
+from .models import OTP
+from .utils import generate_otp, send_otp_email
+from b2b.accounts_b.models import B2BUser
+
+User = get_user_model()
+
 
 class B2BSignupSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
@@ -13,17 +14,38 @@ class B2BSignupSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['name', 'email', 'password', 'confirm_password', 'role']
+        fields = ["name", "email", "password", "confirm_password", "role"]
 
     def validate(self, attrs):
-        if attrs['password'] != attrs['confirm_password']:
-            raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
+        if attrs["password"] != attrs["confirm_password"]:
+            raise serializers.ValidationError(
+                {"confirm_password": "Passwords do not match."}
+            )
         return attrs
 
     def create(self, validated_data):
-        validated_data.pop('confirm_password')
+        validated_data.pop("confirm_password")
         return User.objects.create_user(**validated_data)
 
+
+# class B2BLoginSerializer(serializers.Serializer):
+#     email = serializers.EmailField()
+#     password = serializers.CharField(write_only=True)
+
+#     def validate(self, attrs):
+#         email = attrs.get("email")
+#         password = attrs.get("password")
+#         user = authenticate(email=email, password=password)
+
+#         if not user:
+#             raise serializers.ValidationError("Invalid email or password.")
+#         if not user.is_active:
+#             raise serializers.ValidationError("User account is disabled.")
+
+#         attrs["user"] = user
+#         return attrs
+
+from b2b.accounts_b.models import B2BUser  # ✅ Correct import
 
 class B2BLoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -35,13 +57,17 @@ class B2BLoginSerializer(serializers.Serializer):
         user = authenticate(email=email, password=password)
 
         if not user:
-            raise serializers.ValidationError("Invalid email or password")
+            raise serializers.ValidationError("Invalid email or password.")
+
+        # Ensure the user is a B2B user
+        if not isinstance(user, B2BUser):
+            raise serializers.ValidationError("This account cannot login here.")
+
         if not user.is_active:
-            raise serializers.ValidationError("User account is disabled")
+            raise serializers.ValidationError("User account is disabled.")
+
         attrs['user'] = user
         return attrs
-    
-
 
 class B2BSendOTPSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -52,30 +78,30 @@ class B2BSendOTPSerializer(serializers.Serializer):
         return value
 
     def create(self, validated_data):
-        user = User.objects.get(email=validated_data['email'])
+        user = User.objects.get(email=validated_data["email"])
         code = generate_otp()
         OTP.objects.create(user=user, code=code)
 
-        # ✅ Send OTP using the user's actual name dynamically
+        # Send OTP email
         send_otp_email(user.email, code, name=user.name)
 
         return user
 
     def to_representation(self, instance):
-        
         return {"message": "OTP sent successfully."}
 
- 
 
 class B2BVerifyOTPSerializer(serializers.Serializer):
-    code = serializers.CharField(max_length=6)  
+    code = serializers.CharField(max_length=6)
 
     def validate(self, data):
         request = self.context.get("request")
-        email = request.session.get("otp_user_email")  # get email from session
+        email = request.session.get("otp_user_email")  # stored in SendOTP view
 
         if not email:
-            raise serializers.ValidationError("No OTP request found. Please request OTP first.")
+            raise serializers.ValidationError(
+                "No OTP request found. Please request OTP first."
+            )
 
         user = User.objects.filter(email=email).first()
         if not user:
@@ -89,28 +115,25 @@ class B2BVerifyOTPSerializer(serializers.Serializer):
         return data
 
 
-
-
 class B2BResetPasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(min_length=8)
     confirm_password = serializers.CharField(min_length=8)
+
     def validate(self, attrs):
-        if attrs['new_password'] != attrs['confirm_password']:
+        if attrs["new_password"] != attrs["confirm_password"]:
             raise serializers.ValidationError("Passwords do not match.")
 
-        user = self.context.get('user')
+        user = self.context.get("user")
         if not user:
             raise serializers.ValidationError("OTP verification required.")
         self.user = user
         return attrs
 
     def save(self, **kwargs):
-        self.user.set_password(self.validated_data['new_password'])
+        self.user.set_password(self.validated_data["new_password"])
         self.user.save()
-        OTP.objects.filter(user=self.user).delete()
+        OTP.objects.filter(user=self.user).delete()  # clear used OTPs
         return self.user
-
-
 
 
 class B2BChangePasswordSerializer(serializers.Serializer):
@@ -119,16 +142,15 @@ class B2BChangePasswordSerializer(serializers.Serializer):
     confirm_password = serializers.CharField(min_length=8)
 
     def validate(self, attrs):
-        user = self.context['request'].user
-        if not user.check_password(attrs['old_password']):
+        user = self.context["request"].user
+        if not user.check_password(attrs["old_password"]):
             raise serializers.ValidationError("Old password is incorrect.")
-        if attrs['new_password'] != attrs['confirm_password']:
+        if attrs["new_password"] != attrs["confirm_password"]:
             raise serializers.ValidationError("Passwords do not match.")
         return attrs
 
     def save(self):
-        user = self.context['request'].user
-        user.set_password(self.validated_data['new_password'])
+        user = self.context["request"].user
+        user.set_password(self.validated_data["new_password"])
         user.save()
         return user
-   

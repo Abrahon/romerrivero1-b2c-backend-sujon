@@ -166,6 +166,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 
+
 # Template settings
 TEMPLATES = [
     {
@@ -183,7 +184,8 @@ TEMPLATES = [
 ]
 
 # Authentication settings
-AUTH_USER_MODEL = 'accounts.User' 
+AUTH_USER_MODEL = 'accounts.User'
+AUTH_USER_MODEL = 'accounts_b.B2BUser' 
 AUTHENTICATION_BACKENDS = (
     'allauth.account.auth_backends.AuthenticationBackend',
     'django.contrib.auth.backends.ModelBackend',
@@ -258,12 +260,3 @@ LOGIN_URL = 'accounts_login'
 LOGOUT_URL = 'account_logout'  
 LOGIN_REDIRECT_URL = 'dashboard'  
 LOGOUT_REDIRECT_URL = 'userlogin'  
-
-# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-# EMAIL_HOST = "smtp.gmail.com"
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = "your_admin_email@gmail.com"
-# EMAIL_HOST_PASSWORD = "your_app_password"  
-# DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-# ADMIN_EMAIL = EMAIL_HOST_USER

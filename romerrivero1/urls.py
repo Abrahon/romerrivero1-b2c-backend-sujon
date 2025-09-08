@@ -40,8 +40,7 @@ urlpatterns = [
     path('b2c/api/', include('b2c.admin.coupons.urls')),
 
     # b2b
-    # path('b2b/api/',include('accounts_b.urls')),
-    # path('b2b/api/',include('support.urls')),
+    path('b2b/api/',include('b2b.accounts_b.urls')),
     path('b2b/api/', include('b2b.analytics.urls')),
     path('b2b/api/', include('b2b.product.urls')),
     path('b2b/api/', include('b2b.inquiries.urls')),
