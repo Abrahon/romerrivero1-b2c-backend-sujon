@@ -34,11 +34,12 @@ class AdminSujonProfile(models.Model):
     image = models.ImageField(
         upload_to="admin_profiles/",
         blank=True,
-        null=True
+        null=False
     )
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
     
+# models.py
 class CompanyDetails(models.Model):
     """Company details linked to admin."""
     company_name = models.CharField(max_length=255)
@@ -54,11 +55,8 @@ class CompanyDetails(models.Model):
         upload_to="company_profiles/",
         blank=True,
         null=True
-    ) 
+    )
 
-    def __str__(self):
-        return self.company_name
- 
 class Notification(models.Model):
     """Admin notifications."""
     user = models.ForeignKey(User, on_delete=models.CASCADE,related_name="notifications_profile")

@@ -17,6 +17,8 @@ from .serializers import AdminProfileSerializer
 from django.contrib.auth import update_session_auth_hash
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.exceptions import ValidationError
+from rest_framework import generics, permissions, status, serializers  
+from rest_framework.exceptions import PermissionDenied
 
 
 # Admin Profile Views
@@ -34,31 +36,47 @@ class AdminProfileListCreateAPIView(generics.ListCreateAPIView):
         # If no profile exists, save the new profile
         serializer.save(user=user)
 
-
 class AdminProfileRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = AdminSujonProfile.objects.all()
     serializer_class = AdminProfileSerializer
     permission_classes = [permissions.IsAdminUser]
-    def get_object(self):
-        """Override this method to ensure the profile belongs to the current user."""
-        obj = super().get_object()
-        if obj.user != self.request.user:
-            raise PermissionDenied("You do not have permission to edit this profile.")
-        return obj
+    parser_classes = (MultiPartParser, FormParser)
+    http_method_names = ["get", "patch", "delete", "put"]
 
+    def get_object(self):
+        if not self.request.user.is_superuser:
+            raise PermissionDenied("Only admins can access this profile.")
+        try:
+            return AdminSujonProfile.objects.get(user=self.request.user)
+        except AdminSujonProfile.DoesNotExist:
+            raise serializers.ValidationError({"error": "Admin profile does not exist."})
 
 # Company Details Views
+
 class CompanyDetailsListCreateAPIView(generics.ListCreateAPIView):
     queryset = CompanyDetails.objects.all()
     serializer_class = CompanyDetailsSerializer
     parser_classes = (MultiPartParser, FormParser)
-    permission_classes = [permissions.IsAdminUser]  
+    permission_classes = [permissions.IsAdminUser]
+
+    def perform_create(self, serializer):
+        try:
+            serializer.save()
+        except Exception as e:
+            raise serializers.ValidationError({"error": str(e)})
 
 
 class CompanyDetailsRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = CompanyDetails.objects.all()
     serializer_class = CompanyDetailsSerializer
+    parser_classes = (MultiPartParser, FormParser)
     permission_classes = [permissions.IsAdminUser]
+    http_method_names = ['get', 'patch', 'delete']
+
+    def perform_update(self, serializer):
+        try:
+            serializer.save()
+        except Exception as e:
+            raise serializers.ValidationError({"error": str(e)})
 
 
 # Notifications (Admin)
