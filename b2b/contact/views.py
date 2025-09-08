@@ -5,7 +5,9 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from .models import ContactMessage, AdminNotifications
-from .serializers import ContactMessageSerializer
+from .serializers import ContactMessageSerializer,AdminNotificationSerializer
+from rest_framework.views import APIView
+from rest_framework import status
 
 User = get_user_model()
 
@@ -64,3 +66,29 @@ class ContactMessageCreateAPIView(generics.CreateAPIView):
             {"success": True, "message": "Message sent successfully!"},
             status=201,
         )
+
+
+class AdminNotificationListView(generics.ListAPIView):
+    serializer_class = AdminNotificationSerializer
+    permission_classes = [permissions.IsAdminUser]
+
+    def get_queryset(self):
+        # Return notifications for the logged-in admin
+        return AdminNotifications.objects.filter(user=self.request.user).order_by("-created_at")
+    
+
+
+class MarkNotificationReadView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request, pk):
+        try:
+            notification = AdminNotifications.objects.get(id=pk, user=request.user)
+            notification.is_read = True
+            notification.save()
+            return Response({"success": True, "message": "Notification marked as read"})
+        except AdminNotifications.DoesNotExist:
+            return Response({"success": False, "error": "Notification not found"}, status=404)
+
+
+
