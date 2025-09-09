@@ -45,7 +45,7 @@ class B2BSignupView(generics.CreateAPIView):
 
 class B2BLoginView(generics.GenericAPIView):
     serializer_class = B2BLoginSerializer
-    parser_classes = (MultiPartParser, FormParser)
+    # parser_classes = (MultiPartParser, FormParser)
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):

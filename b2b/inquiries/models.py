@@ -3,11 +3,15 @@ from django.db import models
 from django.conf import settings
 from b2b.product.models import Product
 from common .models import TimeStampedModel
+from django.db import models
+from django.conf import settings
+User = settings.AUTH_USER_MODEL 
 
-User = settings.AUTH_USER_MODEL
 
 class Inquiry(TimeStampedModel):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='inquiries')
+    # user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='inquiries')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='inquiries')
+
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField()
     subject = models.CharField(max_length=255)
@@ -25,3 +29,22 @@ class Inquiry(TimeStampedModel):
 
     class Meta:
         ordering = ['-created_at']
+
+
+
+
+class AdminNotification(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='inquiries_admin_notifications',  # unique
+    )
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Notification for {self.user.username}: {self.message[:50]}"
+
+
+

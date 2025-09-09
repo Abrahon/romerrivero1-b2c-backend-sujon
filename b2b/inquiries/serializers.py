@@ -1,6 +1,9 @@
 from rest_framework import serializers
-from .models import Inquiry
+from .models import Inquiry, AdminNotification
 from b2b.product.models import Product
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class InquirySerializer(serializers.ModelSerializer):
     product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())  # Ensures product exists
@@ -19,3 +22,12 @@ class InquirySerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(f"Only {product.available_stock} items are available in stock.")
         return data
 
+
+class AdminNotificationSerializer(serializers.ModelSerializer):
+    # optional if you want to expose user in serializer
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False)
+
+    class Meta:
+        model = AdminNotification
+        fields = ['id', 'user', 'message', 'is_read', 'created_at']
+        read_only_fields = ['message', 'created_at']
