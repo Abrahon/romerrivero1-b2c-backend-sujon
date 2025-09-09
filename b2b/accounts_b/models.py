@@ -1,11 +1,13 @@
-# accounts_b/models.py
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.utils import timezone
 from datetime import timedelta
 from .enums import RoleChoices
+from .enums import UserType
 
-
+# -------------------------------
+# User Manager
+# -------------------------------
 class B2BUserManager(BaseUserManager):
     def create_user(self, email, password=None, role=RoleChoices.BUYER, **extra_fields):
         if not email:
@@ -28,8 +30,16 @@ class B2BUserManager(BaseUserManager):
 
         return self.create_user(email, password, **extra_fields)
 
-
+# -------------------------------
+# B2B User Model
+# -------------------------------
 class B2BUser(AbstractBaseUser, PermissionsMixin):
+    # existing fields
+    user_type = models.CharField(
+        max_length=10,
+        choices=[("b2b", "B2B")],
+        default=UserType.B2B
+    )
     email = models.EmailField(unique=True)
     name = models.CharField(max_length=100)
     role = models.CharField(max_length=20, choices=RoleChoices.choices, default=RoleChoices.BUYER)
@@ -44,9 +54,11 @@ class B2BUser(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = ["name"]
 
     def __str__(self):
-        return self.email
+        return f"{self.email} ({self.role})"
 
-
+# -------------------------------
+# OTP Model
+# -------------------------------
 class OTP(models.Model):
     user = models.ForeignKey(B2BUser, on_delete=models.CASCADE, related_name="otps")
     code = models.CharField(max_length=6)

@@ -4,6 +4,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from .enums import RoleChoices
+from .enums import UserType
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, role=RoleChoices.BUYER, **extra_fields):
@@ -29,6 +30,11 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
+    user_type = models.CharField(
+        max_length=10,
+        choices=[("b2b", "B2B")],
+        default=UserType.B2B
+    )
     name = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
     role = models.CharField(max_length=20, choices=RoleChoices.choices, default=RoleChoices.BUYER)
