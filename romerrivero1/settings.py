@@ -7,7 +7,7 @@ import dj_database_url
 
 # Load environment variables from the .env file
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(os.path.join(BASE_DIR, '.env'))
+load_dotenv(os  .path.join(BASE_DIR, '.env'))
 
 # Security settings
 DEBUG = os.getenv('DEBUG', 'True') == 'True'  
@@ -57,17 +57,6 @@ INSTALLED_APPS = [
     'b2c.payments.apps.PaymentsConfig',
     'b2c.admin.add_product.apps.AddProductConfig',
 
-    # b2b
-    'b2b.product',
-    'b2b.accounts_b',
-    'b2b.inquiries',
-    'b2b.connections',
-    'b2b.order',
-    'b2b.customer',
-    'b2b.analytics',
-    'b2b.profiles',
-    'b2b.contact',
-
 ]
 ASGI_APPLICATION = "romerrivero1.asgi.application"   
 
@@ -80,17 +69,7 @@ CLOUDINARY_STORAGE = {
 }
 DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 
-# Database settings (POSTGRES)
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.postgresql",
-#         "NAME": os.getenv("DB_NAME"),
-#         "USER": os.getenv("DB_USER"),
-#         "PASSWORD": os.getenv("DB_PASSWORD"),
-        
-        
-#     }
-# }
+
 
 DATABASES = {
     'default': dj_database_url.config(
@@ -149,13 +128,6 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
 ADMIN_EMAIL = os.getenv('EMAIL_HOST_USER')
 
-# Database settings (SQLite)
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3', 
-#         'NAME': BASE_DIR / 'db.sqlite3',  
-#     }
-# }
 
 # Static files settings
 STATIC_URL = '/static/'
@@ -185,7 +157,9 @@ TEMPLATES = [
 
 # Authentication settings
 AUTH_USER_MODEL = 'accounts.User'
-AUTH_USER_MODEL = 'accounts_b.B2BUser' 
+# AUTH_USER_MODEL = 'accounts_b.B2BUser' 
+
+
 AUTHENTICATION_BACKENDS = (
     'allauth.account.auth_backends.AuthenticationBackend',
     'django.contrib.auth.backends.ModelBackend',

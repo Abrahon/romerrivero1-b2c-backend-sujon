@@ -1,39 +1,44 @@
-from common.models import TimeStampedModel 
+
+import uuid
+import os
 from django.db import models
 from django.utils.text import slugify
+from .enums import ProductStatus
+from django.contrib.postgres.fields import ArrayField
 
-# Create your models here.
-class Category(TimeStampedModel):
-    name = models.CharField(max_length=255)
-    slug = models.SlugField(max_length=100, unique=True, blank=True)
-    description = models.CharField(max_length=255)
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = slugify(self.name)
-        super().save(*args, **kwargs)
+class Category(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255, unique=True)
 
     def __str__(self):
         return self.name
-    
-    class Meta:
-        ordering = ['-created_at']
 
-        
-class Products(TimeStampedModel):
-    category = models.ForeignKey(Category,  related_name='products', on_delete=models.CASCADE, null=True, blank=True)
+def product_image_path(instance, filename):
+    base, ext = os.path.splitext(filename)
+    slug = slugify(instance.title)
+    return f'product_images/{slug}-{uuid.uuid4().hex}{ext}'
+
+class Products(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=255)
-    slug = models.SlugField(max_length=255, unique=True, blank=True)
-    description = models.CharField(max_length=255)
-    price = models.DecimalField(max_digits=12, decimal_places=2)
-    stock = models.PositiveIntegerField()
-    is_active = models.BooleanField(default=True)
-    image = models.ImageField(upload_to='product_images/', blank=True, null=True)
-    rating = models.FloatField(default=0.0)  
-    tags = models.CharField(max_length=255, blank=True)
+    product_code = models.CharField(max_length=255, unique=True, editable=False)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
+    colors = models.JSONField(default=list)
+    available_stock = models.PositiveIntegerField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    description = models.TextField()
+    images = models.JSONField(blank=True, null=True)
+
+
+    
+
+    status = models.CharField(max_length=20, choices=ProductStatus.choices, default=ProductStatus.INACTIVE)
+
+    def save(self, *args, **kwargs):
+        if not self.product_code:
+            self.product_code = str(uuid.uuid4()).split('-')[0]
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title
-
-
-
 

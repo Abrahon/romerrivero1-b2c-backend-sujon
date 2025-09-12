@@ -9,7 +9,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 class CategoryListCreateAPIView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
 
 class CategoryDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
@@ -29,7 +29,7 @@ class ProductDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Products.objects.all()
     serializer_class = ProductSerializer
     permission_classes = [AllowAny]
-    lookup_field = 'id'  # We're looking up by 'id' in the URL
+    lookup_field = 'id'  
 
     def get_object(self):
         """

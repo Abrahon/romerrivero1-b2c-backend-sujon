@@ -9,10 +9,12 @@ from datetime import date
 from common .models import TimeStampedModel
 from .enums import Gender
 
+from django.contrib.auth import get_user_model
 
+User = get_user_model()
 
 class UserProfile(TimeStampedModel):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,  related_name="user_profile")
+    user = models.OneToOneField(User, on_delete=models.CASCADE,  related_name="user_profile")
     profile_image = models.ImageField(upload_to='profiles/', null=True, blank=True)
 
     # Profile information
