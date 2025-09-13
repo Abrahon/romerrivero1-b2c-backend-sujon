@@ -55,7 +55,7 @@ INSTALLED_APPS = [
     'b2c.admin.coupons',
     'b2c.orders.apps.OrdersConfig',  
     'b2c.payments.apps.PaymentsConfig',
-    'b2c.admin.add_product.apps.AddProductConfig',
+
 
 ]
 ASGI_APPLICATION = "romerrivero1.asgi.application"   

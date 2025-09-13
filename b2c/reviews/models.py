@@ -8,10 +8,7 @@ class Review(TimeStampedModel):
     # Use the custom user model defined in settings.py
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     rating = models.IntegerField()  
-    comment = models.TextField(blank=True)
-
-    # class Meta:
-    #     unique_together = ('product', 'user')  
+    comment = models.TextField(blank=True)  
 
     def __str__(self):
         return f"{self.user.username} - {self.product.name} - {self.rating}⭐"

@@ -1,30 +1,13 @@
-
-
-# from django.urls import path
-# from .views import OrderListView, OrderSummaryView, PlaceOrderView
-
-# urlpatterns = [
-#     path('', OrderListView.as_view(), name='order-list'),
-#     path('summary/', OrderSummaryView.as_view(), name='order-summary'),
-#     path('place/', PlaceOrderView.as_view(), name='place-order'),
-# ]
-# b2c/orders/urls.py
-
-# b2c/orders/urls.py
-
 from django.urls import path
 from .views import OrderListView, OrderDetailView, PlaceOrderView, OrderTrackingView
 
 urlpatterns = [
-    # List user's orders (order history screen)
-    path('', OrderListView.as_view(), name='order-list'),
-    
-    # Detailed order (items + metadata)
-    path('<int:pk>/', OrderDetailView.as_view(), name='order-detail'),
-    
-    # Place an order from the cart
-    path('place/', PlaceOrderView.as_view(), name='place-order'),
-    # order tracking
-    path("track/<str:pk>/", OrderTrackingView.as_view(), name="order-tracking"),
+    # List all orders for authenticated user
+    path('orders/', OrderListView.as_view(), name='order-list'),
+    # Detailed order info
+    path('order/<int:pk>/', OrderDetailView.as_view(), name='order-detail'),
+    # Place order from cart
+    path('order/place/', PlaceOrderView.as_view(), name='place-order'),
+    # Order tracking by ID or order number
+    path('order/track/<str:order_identifier>/', OrderTrackingView.as_view(), name='order-tracking'),
 ]
-

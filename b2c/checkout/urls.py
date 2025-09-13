@@ -1,6 +1,8 @@
 from django.urls import path
-from .views import ShippingListCreateView
+from .views import ShippingListCreateView, ShippingRetrieveUpdateDeleteView
+
 
 urlpatterns = [
-    path('', ShippingListCreateView.as_view(), name='shipping-list-create'),
+    path('shipping/', ShippingListCreateView.as_view(), name='shipping-list-create'),
+    path('shipping/<uuid:id>/', ShippingRetrieveUpdateDeleteView.as_view(), name='shipping-detail'),
 ]

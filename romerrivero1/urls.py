@@ -25,10 +25,10 @@ urlpatterns = [
     path('b2c/api/',include('support.urls')),
     path('b2c/api/notifications/', include('notifications.urls')),
     path('b2c/api/',include('b2c.products.urls')), 
-    path('api/cart/',include('b2c.cart.urls')), 
-    path('api/shipping/',include('b2c.checkout.urls')), 
+    path('b2c/api/',include('b2c.cart.urls')), 
+    path('b2c/api/',include('b2c.checkout.urls')), 
     # path('api/shipping/', include('b2c.shipping.urls')),
-    path('b2c/api/orders/',include('b2c.orders.urls')), 
+    path('b2c/api/',include('b2c.orders.urls')), 
     path('b2c/api/payment/',include('b2c.payments.urls')), 
     path('b2c/api/',include('b2c.reviews.urls')), 
     path('b2c/api/messages/',include('b2c.chat.urls')),
@@ -36,7 +36,7 @@ urlpatterns = [
     path('b2c/api/',include('b2c.user_profile.urls')),          
     # admin
     path('b2c/api/',include('b2c.admin.admin_profile.urls')),
-    path('b2c/api/admin/', include('b2c.admin.add_product.urls')),
+    # path('b2c/api/admins/', include('b2c.admin.add_product.urls')),
     path('b2c/api/', include('b2c.admin.coupons.urls')),
     
 ]

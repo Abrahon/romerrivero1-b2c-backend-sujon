@@ -1,25 +1,21 @@
 from decimal import Decimal
 from django.db import transaction
-from rest_framework import generics, status
+from django.shortcuts import get_object_or_404
+
+from rest_framework import generics, filters, permissions, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+
+from django_filters.rest_framework import DjangoFilterBackend
+
 from b2c.cart.models import CartItem
 from b2c.checkout.models import Shipping
 from b2c.products.models import Products
-from b2c.orders.models import Order, OrderItem
-from b2c.orders.serializers import OrderDetailSerializer
+from b2c.orders.models import Order, OrderItem, OrderTracking
+from b2c.orders.serializers import OrderItemSerializer, OrderDetailSerializer, OrderTrackingSerializer
 from notifications.models import Notification
-
-from rest_framework import generics, filters
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from django_filters.rest_framework import DjangoFilterBackend
-from .models import Order
-from .serializers import OrderListSerializer
-from .serializers import OrderTrackingSerializer
 from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from django.shortcuts import get_object_or_404
+
 
 
 class OrderListView(generics.ListAPIView):
@@ -27,8 +23,9 @@ class OrderListView(generics.ListAPIView):
     GET /api/orders/ -> Paginated list of orders for the authenticated user.
     Supports: search (order_number, product name), filter (order_status, payment_status), ordering.
     """
-    permission_classes = [IsAuthenticated]  # Ensure only authenticated users can access this
-    serializer_class = OrderListSerializer
+    serializer_class = OrderDetailSerializer  # Use OrderDetailSerializer
+    permission_classes = [IsAuthenticated]
+
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["order_status", "payment_status"]
     search_fields = ["order_number", "items__product__name"]
@@ -39,79 +36,75 @@ class OrderListView(generics.ListAPIView):
         return (
             Order.objects.filter(user=self.request.user)
             .select_related("user")
-            .prefetch_related("items__product")
+            .prefetch_related("items__product")  # prefetch related items and products
             .order_by("-created_at")
         )
 
 
 
-class PlaceOrderView(generics.CreateAPIView):
-    """
-    POST /api/orders/place/
-    Place an order from the user's cart + latest shipping
-    """
+class PlaceOrderView(APIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = OrderDetailSerializer
 
     @transaction.atomic
     def post(self, request, *args, **kwargs):
         user = request.user
 
-        cart_qs = CartItem.objects.filter(user=user).select_related("product")
-        if not cart_qs.exists():
-            return Response({"detail": "Cart is empty."}, status=status.HTTP_400_BAD_REQUEST)
+        # Get shipping object for the user
+        shipping_id = request.data.get("shipping_id")
+        if not shipping_id:
+            return Response(
+                {"error": "shipping_id is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        shipping = Shipping.objects.filter(user=user).last()
-        if not shipping:
-            return Response({"detail": "Shipping information missing."}, status=status.HTTP_400_BAD_REQUEST)
+        shipping = get_object_or_404(Shipping, id=shipping_id, user=user)
 
+        # Create order with Shipping object (not string)
         order = Order.objects.create(
             user=user,
-            shipping_address=str(shipping),
+            shipping_address=shipping,   # ✅ pass the object
             total_amount=Decimal("0.00"),
-            payment_status="pending",  # Default payment status
-            order_status="PENDING"  # Default order status
+            payment_status="pending",
+            order_status="PENDING",
         )
 
-        total = Decimal("0.00")
-        for cart_item in cart_qs:
-            product = cart_item.product
-            qty = cart_item.quantity
-            price = getattr(product, "price", Decimal("0.00"))
+        # Add cart items into order items
+        cart_items = CartItem.objects.filter(user=user)
+        if not cart_items.exists():
+            return Response(
+                {"error": "No items in cart"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-            if product.stock < qty:
-                transaction.set_rollback(True)
-                return Response(
-                    {"detail": f"Insufficient stock for {product.name}."}, status=status.HTTP_400_BAD_REQUEST
-                )
-            product.stock -= qty
-            product.save(update_fields=["stock"])
+        total_amount = Decimal("0.00")
+        for item in cart_items:
+            product = item.product
+            OrderItem.objects.create(
+                order=order,
+                product=product,
+                quantity=item.quantity,
+                price=product.price
+            )
+            total_amount += product.price * item.quantity
 
-            OrderItem.objects.create(order=order, product=product, quantity=qty, price_at_time=price)
-            total += price * qty
+        # Update total amount
+        order.total_amount = total_amount
+        order.save()
 
-        order.total_amount = total
-        order.save(update_fields=["total_amount"])
+        # Clear cart after placing order
+        cart_items.delete()
 
-        cart_qs.delete()
-
-        # Send notification to the user
-        notification = Notification.objects.create(
-            user=user,
-            title="Order Placed",
-            message=f"Your order #{order.id} has been placed successfully. Total: {total}"
+        return Response(
+            {"message": "Order placed successfully", "order_id": order.id},
+            status=status.HTTP_201_CREATED
         )
-
-        return Response(self.get_serializer(order).data, status=status.HTTP_201_CREATED)
-
-
 
 
 class OrderDetailView(generics.RetrieveAPIView):
     """
     GET /api/orders/<pk>/ -> Detailed order (items + metadata).
     """
-    permission_classes = [IsAuthenticated]  # Ensure only authenticated users can access this view
+    permission_classes = [IsAuthenticated]  
     serializer_class = OrderDetailSerializer
 
     def get_queryset(self):
@@ -120,64 +113,35 @@ class OrderDetailView(generics.RetrieveAPIView):
 
 
 
-
-# class OrderTrackingView(generics.RetrieveAPIView):
-#     """
-#     Track order by order_number or id.
-#     Example: /api/orders/track/<order_id_or_number>/
-#     """
-#     serializer_class = OrderTrackingSerializer
-#     permission_classes = [IsAuthenticated]
-#     # permission_classes = [AllowAny]
-    
-    
-#     def get_queryset(self):
-           
-#            order_identifier = self.kwargs.get("pk")
-#            try:
-#             # First try by ID
-#             return Order.objects.get(id=order_identifier, user=self.request.user)
-#            except Order.DoesNotExist:
-               
-#             try:
-#                 return Order.objects.get(order_number=order_identifier, user=self.request.user)
-#             except Order.DoesNotExist:
-#                 return None
-            
-#     def get(self, request, *args, **kwargs):
-#         order = self.get_object()
-#         if not order:
-#             return Response(
-#                 {"detail": "Order not found or you don’t have permission."},
-#                 status=status.HTTP_404_NOT_FOUND,
-#             )
-#         serializer = self.get_serializer(order)
-#         return Response(serializer.data, status=status.HTTP_200_OK)
-
-            
-#         # Ensure the user can only view their own orders
-#         # return Order.objects.filter(user=self.request.user).select_related("user")
-
-class OrderTrackingView(generics.RetrieveAPIView):
+class OrderTrackingView(generics.ListAPIView):
     serializer_class = OrderTrackingSerializer
-    lookup_url_kwarg = "order_identifier"
+    permission_classes = [permissions.IsAuthenticated]
 
-    def get_object(self):
+    def get_queryset(self):
         order_identifier = self.kwargs.get("order_identifier")
+        user = self.request.user
 
-        if not order_identifier:  # safety check
-            return None
-
-        # Case 1: Numeric ID
+        # Lookup by numeric ID or order number
         if order_identifier.isdigit():
-            return Order.objects.filter(id=int(order_identifier)).first()
+            order = Order.objects.filter(id=int(order_identifier)).first()
+        else:
+            order = Order.objects.filter(order_number=order_identifier).first()
 
-        # Case 2: Order Number (string with hyphen etc.)
-        return Order.objects.filter(order_number=order_identifier).first()
+        # Check if order exists and belongs to user (unless admin)
+        if not order or (not user.is_staff and order.user != user):
+            return OrderTracking.objects.none()  # returns empty queryset
 
-    def get(self, request, *args, **kwargs):
-        order = self.get_object()
-        if order:
-            serializer = self.get_serializer(order)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response({"detail": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
+        # Return tracking history (can be empty)
+        return order.tracking_history.all()
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+
+        if queryset is None:  # just in case
+            return Response(
+                {"detail": "Order not found or access denied."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

@@ -1,12 +1,43 @@
-
 from django.urls import path
-from . import views
+from .views import (
+   
+    # Admin URLs
+    AdminCategoryListCreateView,
+    AdminCategoryProductListView,
+    AdminProductListCreateView,
+    AdminProductRetrieveUpdateDeleteView,
+    AdminProductBulkDelete,
+    AdminProductStatusListView,
+    AdminBulkUploadProductView,
+    # Authenticated User URLs
+    UserCategoryListView,
+    UserCategoryProductListView,
+    UserProductListView,
+    UserProductDetailView,
+    UserProductSearchView,
+)
 
 urlpatterns = [
-    # Category URLs
-    path('categories/', views.CategoryListCreateAPIView.as_view(), name='category-list-create'),
-    path('categories/<int:pk>/', views.CategoryDetailAPIView.as_view(), name='category-detail'),
-    # Product URLs
-    path('products/', views.ProductListCreateAPIView.as_view(), name='product-list-create'),
-    path('products/<int:pk>/', views.ProductDetailAPIView.as_view(), name='product-detail'),
+
+    # =========================
+    # ADMIN ROUTES
+    # =========================
+    path('admin/categories/', AdminCategoryListCreateView.as_view(), name='admin-category-list-create'),
+    # path('admin/categories/<uuid:category_id>/products/', AdminCategoryProductListView.as_view(), name='admin-category-products'),
+    path('admin/categories/<int:category_id>/products/', AdminCategoryProductListView.as_view(), name='admin-category-products'),
+    path('admin/products/', AdminProductListCreateView.as_view(), name='admin-product-list-create'),
+    # path('admin/products/<uuid:id>/', AdminProductRetrieveUpdateDeleteView.as_view(), name='admin-product-detail'),
+    path('admin/products/<int:id>/', AdminProductRetrieveUpdateDeleteView.as_view(), name='admin-product-detail'),
+    path('admin/products/bulk-delete/', AdminProductBulkDelete.as_view(), name='admin-product-bulk-delete'),
+    path('admin/products/status/', AdminProductStatusListView.as_view(), name='admin-product-status'),
+    path('admin/products/bulk-upload/', AdminBulkUploadProductView.as_view(), name='admin-product-bulk-upload'),
+
+    # =========================
+    # AUTHENTICATED USER ROUTES
+    # =========================
+    path('categories/', UserCategoryListView.as_view(), name='user-category-list'),
+    path('categories/<uuid:category_id>/products/', UserCategoryProductListView.as_view(), name='user-category-products'),
+    path('products/', UserProductListView.as_view(), name='user-product-list'),
+    path('products/<int:id>/', UserProductDetailView.as_view(), name='user-product-detail'),
+    path('products/search/', UserProductSearchView.as_view(), name='user-product-search'),
 ]
