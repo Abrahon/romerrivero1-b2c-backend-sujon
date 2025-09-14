@@ -27,7 +27,6 @@ urlpatterns = [
     path('b2c/api/',include('b2c.products.urls')), 
     path('b2c/api/',include('b2c.cart.urls')), 
     path('b2c/api/',include('b2c.checkout.urls')), 
-    # path('api/shipping/', include('b2c.shipping.urls')),
     path('b2c/api/',include('b2c.orders.urls')), 
     path('b2c/api/payment/',include('b2c.payments.urls')), 
     path('b2c/api/',include('b2c.reviews.urls')), 
@@ -36,7 +35,6 @@ urlpatterns = [
     path('b2c/api/',include('b2c.user_profile.urls')),          
     # admin
     path('b2c/api/',include('b2c.admin.admin_profile.urls')),
-    # path('b2c/api/admins/', include('b2c.admin.add_product.urls')),
     path('b2c/api/', include('b2c.admin.coupons.urls')),
     
 ]

@@ -97,6 +97,7 @@ ALLOWED_HOSTS = ["*"]
 
 # If using static files
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
