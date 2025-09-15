@@ -1,61 +1,95 @@
-from django.shortcuts import render
-# Create your views here.
 from rest_framework import generics, permissions, status
+from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from accounts.permissions import IsAdminUser
 from .models import Message
 from .serializers import MessageSerializer
-from rest_framework import status
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from accounts .permissions import IsAdminUser
 
-#  Buyer sends a message
+
+# Buyer sends message
 class SendMessageView(generics.CreateAPIView):
     serializer_class = MessageSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
-        serializer.save(sender=self.request.user)
+        receiver_id = self.request.data.get("receiver")
+        serializer.save(sender=self.request.user, receiver_id=receiver_id)
 
 
-#  Admin views all messages (or Buyer views their own)
+# List messages
 class MessageListView(generics.ListAPIView):
     serializer_class = MessageSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff:  #  Admin sees all
-            return Message.objects.all().order_by('-timestamp')
-        else:  #  Buyer sees only their messages
-            return Message.objects.filter(sender=user).order_by('-timestamp')
-
-#  Admin marks a message as read
+        if user.is_staff:
+            return Message.objects.all()
+        return Message.objects.filter(sender=user) | Message.objects.filter(receiver=user)
 
 
-class MarkMessageReadView(generics.UpdateAPIView):
-    serializer_class = MessageSerializer
-    queryset = Message.objects.all()
-    permission_classes = [IsAdminUser]  # Admin users can mark messages as read
-    
-    def perform_update(self, serializer):
-        # Mark the message as read and save it
-        message = serializer.save(is_read=True)
-        
-        # Optionally, you can add any additional logic here if needed
-        return Response({'status': 'marked as read'})
+# Admin marks message as read
+class MarkMessageReadView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def patch(self, request, pk):
+        message = get_object_or_404(Message, id=pk)
+        message.is_read = True
+        message.save(update_fields=['is_read'])
+        return Response({"status": "marked as read"}, status=status.HTTP_200_OK)
+
+
+# Admin replies to a message
+class ReplyMessageView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, pk):
+        parent_message = get_object_or_404(Message, id=pk)
+        content = request.data.get('content')
+        if not content:
+            return Response({"error": "Message content is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        reply = Message.objects.create(
+            sender=request.user,
+            receiver=parent_message.sender,
+            content=content,
+            parent=parent_message
+        )
+        serializer = MessageSerializer(reply)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+# Delete message
+class DeleteMessageView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, pk):
+        message = get_object_or_404(Message, id=pk)
+        if not (request.user.is_staff or message.sender == request.user):
+            return Response({"error": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+
+        message.delete()
+        return Response({"status": "Message deleted"}, status=status.HTTP_200_OK)
 
 
 
+# Update a message (both sender and receiver can update)
+class UpdateMessageView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
 
-# class MarkMessageReadView(APIView):
-#     permission_classes = [permissions.IsAuthenticated]
+    def patch(self, request, pk):
+        message = get_object_or_404(Message, id=pk)
 
-#     def patch(self, request, pk):
-#         try:
-#             message = Message.objects.get(id=pk, receiver=request.user)  # Ensure the message belongs to the authenticated user
-#             message.is_read = True
-#             message.save()
-#             return Response(MessageSerializer(message).data, status=status.HTTP_200_OK)
-#         except Message.DoesNotExist:
-#             return Response({'detail': 'Message not found.'}, status=status.HTTP_404_NOT_FOUND)
+        # Only sender or receiver can update
+        if not (request.user == message.sender or request.user == message.receiver):
+            return Response({"error": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+
+        content = request.data.get('content')
+        if not content:
+            return Response({"error": "Message content is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        message.content = content
+        message.save(update_fields=['content'])
+        serializer = MessageSerializer(message)
+        return Response(serializer.data, status=status.HTTP_200_OK)

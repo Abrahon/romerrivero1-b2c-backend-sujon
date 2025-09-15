@@ -48,11 +48,14 @@ INSTALLED_APPS = [
     'b2c.user_profile',
     'b2c.cart',
     'b2c.checkout',
+    'b2c.coupons',
+    'b2c.wishlist',
+    'b2c.promotions',
     # 'b2c.orders',
     'b2c.chat',
     'b2c.admin.admin_profile',
     # 'b2c.admin.add_product',
-    'b2c.admin.coupons',
+   
     'b2c.orders.apps.OrdersConfig',  
     'b2c.payments.apps.PaymentsConfig',
 
@@ -79,14 +82,21 @@ DATABASES = {
     )
 }
 
+# CHANNEL_LAYERS = {
+#     "default": {
+#         "BACKEND": "channels_redis.core.RedisChannelLayer",
+#         "CONFIG": {
+#             "hosts": [("127.0.0.1", 6379)],   
+#         },
+#     },
+# }
+
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],   
-        },
-    },
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
 }
+
 
 # session for reset password 
 SESSION_COOKIE_AGE = 600  
@@ -128,6 +138,7 @@ EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
 ADMIN_EMAIL = os.getenv('EMAIL_HOST_USER')
+ADMIN_EMAIL = os.getenv('ADMIN_EMAIL')
 
 
 # Static files settings

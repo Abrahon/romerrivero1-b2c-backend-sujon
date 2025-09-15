@@ -30,12 +30,13 @@ urlpatterns = [
     path('b2c/api/',include('b2c.orders.urls')), 
     path('b2c/api/payment/',include('b2c.payments.urls')), 
     path('b2c/api/',include('b2c.reviews.urls')), 
-    path('b2c/api/messages/',include('b2c.chat.urls')),
-    # path('b2c/api/accounts/', include('accounts.urls')),    
-    path('b2c/api/',include('b2c.user_profile.urls')),          
+    path('b2c/api/',include('b2c.chat.urls')), 
+    path('b2c/api/',include('b2c.wishlist.urls')), 
+    path('b2c/api/',include('b2c.wishlist.urls')), 
+    path('b2c/api/',include('b2c.promotions.urls')),          
     # admin
     path('b2c/api/',include('b2c.admin.admin_profile.urls')),
-    path('b2c/api/', include('b2c.admin.coupons.urls')),
+    # path('b2c/api/', include('b2c.admin.coupons.urls')),
     
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

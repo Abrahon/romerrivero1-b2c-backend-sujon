@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class CouponsConfig(AppConfig):
+class WishlistConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'b2c.admin.coupons'
+    name = 'b2c.wishlist'

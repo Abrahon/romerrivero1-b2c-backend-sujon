@@ -2,7 +2,7 @@
 from django.db import models
 from accounts.models import User
 from common.models import TimeStampedModel
-from b2c.checkout.enums import ShippingStatusChoices  # Import the choices
+from .enums import ShippingStatusChoices  # Import the choices
 from b2c.orders.models import Order
 
 

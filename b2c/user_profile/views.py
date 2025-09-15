@@ -1,12 +1,13 @@
-from django.shortcuts import render
-
-# Create your views here.
-# accounts/views.py
-from rest_framework import generics
+from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.response import Response
 from .models import UserProfile
 from .serializers import UserProfileSerializer
+from django.core.exceptions import ObjectDoesNotExist
+from rest_framework import serializers
+
+
 
 class UserProfileView(generics.RetrieveUpdateAPIView):
     """
@@ -19,15 +20,33 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_object(self):
-        # create profile if not exists (convenience)
-        profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
-        return profile
+        try:
+            profile, created = UserProfile.objects.get_or_create(user=self.request.user)
+            return profile
+        except Exception as e:
+            raise serializers.ValidationError({"detail": f"Error retrieving profile: {str(e)}"})
+
+    def update(self, request, *args, **kwargs):
+        try:
+            partial = kwargs.pop('partial', True)  # default to partial update
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=partial)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"detail": f"Error updating profile: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class AdminUserProfileListView(generics.ListAPIView):
     """
     For admin: list all profiles
     """
-    queryset = UserProfile.objects.all().order_by('-updated_at')
     serializer_class = UserProfileSerializer
     permission_classes = [IsAdminUser]
+
+    def get_queryset(self):
+        try:
+            return UserProfile.objects.all().order_by('-updated_at')
+        except Exception as e:
+            return Response({"detail": f"Error fetching profiles: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)

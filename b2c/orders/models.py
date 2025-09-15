@@ -28,9 +28,22 @@ class Order(TimeStampedModel):
     order_status = models.CharField(max_length=20, choices=OrderStatus.choices, default=OrderStatus.PENDING)
     stripe_payment_intent = models.CharField(max_length=255, blank=True, null=True)
     stripe_checkout_session_id = models.CharField(max_length=255, blank=True, null=True)
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(default=timezone.now)
 
-    class Meta:
-        ordering = ["-created_at"]
+    # coupon = models.ForeignKey(
+    #     "coupons.Coupon",
+    #     on_delete=models.SET_NULL,
+    #     null=True,
+    #     blank=True,
+    #     related_name="orders"
+    # )
+    # discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    # final_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    
+
+    # class Meta:
+    #     ordering = ["-created_at"]
 
     def __str__(self):
         return f"{self.order_number} — {self.user}"
@@ -75,8 +88,8 @@ class OrderTracking(TimeStampedModel):
     )
     note = models.TextField(blank=True, null=True)
 
-    class Meta:
-        ordering = ['-created_at']
+    # class Meta:
+    #     ordering = ['-created_at']
 
     def __str__(self):
         return f"Order {self.order.order_number} - {self.status}"
