@@ -1,7 +1,5 @@
 import re
-import uuid
 import json
-from django.utils.text import slugify
 from rest_framework import serializers
 from cloudinary.uploader import upload
 from .models import Products, ProductCategory
@@ -44,9 +42,7 @@ class ProductSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "product_code", "images", "discounted_price"]
 
-    # -------------------------------
-    # HEX color validation
-    # -------------------------------
+    # HEX validation
     def _is_valid_hex(self, color):
         hex_pattern = re.compile(r"^#(?:[0-9a-fA-F]{3}){1,2}$")
         return bool(hex_pattern.match(color))
@@ -54,41 +50,29 @@ class ProductSerializer(serializers.ModelSerializer):
     def _normalize_colors(self, colors):
         if not colors:
             return []
-
         if isinstance(colors, str):
             try:
                 colors = json.loads(colors)
             except json.JSONDecodeError:
                 colors = [c.strip() for c in colors.split(",") if c.strip()]
-
         normalized = []
         for c in colors:
             c = c.strip()
             if not self._is_valid_hex(c):
-                raise serializers.ValidationError(
-                    f"Invalid color code: {c}. Must be HEX like #RRGGBB."
-                )
+                raise serializers.ValidationError(f"Invalid color code: {c}. Must be HEX like #RRGGBB.")
             normalized.append(c.upper())
-
         return normalized
 
-    # -------------------------------
     # Discount validation
-    # -------------------------------
     def validate_discount(self, value):
         if value < 0 or value > 100:
             raise serializers.ValidationError("Discount must be between 0 and 100.")
         return value
 
     def get_discounted_price(self, obj):
-        """Calculate price after discount"""
-        if obj.discount > 0:
-            return float(obj.price - (obj.price * obj.discount / 100))
-        return float(obj.price)
+        return float(obj.price - (obj.price * obj.discount / 100)) if obj.discount > 0 else float(obj.price)
 
-    # -------------------------------
-    # Create Product
-    # -------------------------------
+    # Create product
     def create(self, validated_data):
         colors = self.initial_data.get("colors", [])
         validated_data["colors"] = self._normalize_colors(colors)
@@ -106,9 +90,7 @@ class ProductSerializer(serializers.ModelSerializer):
         product.save()
         return product
 
-    # -------------------------------
-    # Update Product
-    # -------------------------------
+    # Update product
     def update(self, instance, validated_data):
         colors = self.initial_data.get("colors", None)
         if colors is not None:
@@ -116,13 +98,14 @@ class ProductSerializer(serializers.ModelSerializer):
 
         images = validated_data.pop("images_upload", [])
         if images:
-            image_urls = instance.images or []
+            # Keep existing images
+            image_urls = instance.images if instance.images else []
             for image in images:
                 result = upload(image)
                 image_urls.append(result['secure_url'])
             instance.images = image_urls
 
-        # Update other fields dynamically
+        # Update other fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 
