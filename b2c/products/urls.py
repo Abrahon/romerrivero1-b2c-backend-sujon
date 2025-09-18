@@ -8,13 +8,14 @@ from .views import (
     AdminProductRetrieveUpdateDeleteView,
     AdminProductBulkDelete,
     AdminProductStatusListView,
-    AdminBulkUploadProductView,
+    BulkUploadProductView,
     # Authenticated User URLs
     UserCategoryListView,
     UserCategoryProductListView,
     UserProductListView,
     UserProductDetailView,
     UserProductSearchView,
+    CategoryProductFilterView
 )
 
 urlpatterns = [
@@ -30,7 +31,8 @@ urlpatterns = [
     path('admin/products/<int:id>/', AdminProductRetrieveUpdateDeleteView.as_view(), name='admin-product-detail'),
     path('admin/products/bulk-delete/', AdminProductBulkDelete.as_view(), name='admin-product-bulk-delete'),
     path('admin/products/status/', AdminProductStatusListView.as_view(), name='admin-product-status'),
-    path('admin/products/bulk-upload/', AdminBulkUploadProductView.as_view(), name='admin-product-bulk-upload'),
+    path('admin/products/bulk-upload/', BulkUploadProductView.as_view(), name='admin-product-bulk-upload'),
+
 
     # =========================
     # AUTHENTICATED USER ROUTES
@@ -40,4 +42,6 @@ urlpatterns = [
     path('products/', UserProductListView.as_view(), name='user-product-list'),
     path('products/<int:id>/', UserProductDetailView.as_view(), name='user-product-detail'),
     path('products/search/', UserProductSearchView.as_view(), name='user-product-search'),
+    path('products/category-filter/', CategoryProductFilterView.as_view(), name='category-product-filter'),
 ]
+

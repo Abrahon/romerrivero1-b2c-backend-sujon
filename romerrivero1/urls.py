@@ -36,7 +36,8 @@ urlpatterns = [
     path('b2c/api/',include('b2c.promotions.urls')),          
     # admin
     path('b2c/api/',include('b2c.admin.admin_profile.urls')),
-    # path('b2c/api/', include('b2c.admin.coupons.urls')),
+    path('b2c/api/', include('b2c.user_profile.urls')),
+    
     
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

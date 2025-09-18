@@ -5,11 +5,13 @@ from rest_framework import serializers
 from .models import UserProfile, Gender
 from datetime import date
 
-PHONE_REGEX = re.compile(r'^\+?\d{7,15}$')  # simple E.164-ish validation
+PHONE_REGEX = re.compile(r'^\+?\d{7,15}$')  
 
 class UserProfileSerializer(serializers.ModelSerializer):
     user = serializers.PrimaryKeyRelatedField(read_only=True)
-    profile_image = serializers.ImageField(required=False, allow_null=True)
+    profile_image  = serializers.ListField(
+        child=serializers.ImageField(), write_only=True, required=False
+    )
 
     class Meta:
         model = UserProfile

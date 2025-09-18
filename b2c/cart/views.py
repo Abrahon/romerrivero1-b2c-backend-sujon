@@ -9,6 +9,7 @@ from rest_framework.exceptions import ValidationError
 class CartItemListCreateView(generics.ListCreateAPIView):
     serializer_class = CartItemSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None 
 
     def get_queryset(self):
         return CartItem.objects.filter(user=self.request.user)
@@ -27,11 +28,10 @@ class CartItemListCreateView(generics.ListCreateAPIView):
 
 
 
-
-
 class CartItemUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = CartItemSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None 
     lookup_field = 'id'
 
     def get_queryset(self):

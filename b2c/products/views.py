@@ -9,6 +9,26 @@ import csv
 import uuid
 import logging
 import django_filters
+import csv
+import uuid
+import requests
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+from django.utils.text import slugify
+from rest_framework import status, permissions
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser
+from .models import Products, ProductCategory
+from .serializers import ProductSerializer
+import logging
+from rest_framework import generics, permissions
+from rest_framework.pagination import PageNumberPagination
+
+
+
+
+logger = logging.getLogger(__name__)
 
 from .models import Products, ProductCategory
 from .serializers import ProductSerializer, CategorySerializer
@@ -154,16 +174,135 @@ class AdminProductStatusListView(generics.ListAPIView):
         elif status_param == "inactive":
             return Products.objects.filter(status=ProductStatus.INACTIVE)
         return Products.objects.none()
+    
+# search filter
+class ProductSearchFilterView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        query = request.query_params.get("q")
+        category = request.query_params.get("category")
+        min_price = request.query_params.get("min_price")
+        max_price = request.query_params.get("max_price")
+        price_sort = request.query_params.get("price_sort")  # "asc" or "desc"
+        name_sort = request.query_params.get("name_sort")    # "asc" or "desc"
+
+        products = Products.objects.all()
+
+        # --- Search by title or description ---
+        if query:
+            products = products.filter(
+                Q(title__icontains=query) | Q(description__icontains=query)
+            )
+
+        # --- Filter by category ---
+        if category:
+            products = products.filter(category__id=category)
+
+        # --- Filter by price range ---
+        if min_price:
+            try:
+                min_price_val = float(min_price)
+                products = products.filter(price__gte=min_price_val)
+            except ValueError:
+                return Response({"error": "Invalid min_price"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if max_price:
+            try:
+                max_price_val = float(max_price)
+                products = products.filter(price__lte=max_price_val)
+            except ValueError:
+                return Response({"error": "Invalid max_price"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # --- Sort by price ---
+        if price_sort:
+            if price_sort.lower() == "asc":
+                products = products.order_by("price")
+            elif price_sort.lower() == "desc":
+                products = products.order_by("-price")
+
+        # --- Sort by name (A-Z or Z-A) ---
+        if name_sort:
+            if name_sort.lower() == "asc":
+                products = products.order_by("title")
+            elif name_sort.lower() == "desc":
+                products = products.order_by("-title")
+
+        # --- Error handling ---
+        if not products.exists():
+            return Response({"error": "No products found."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = ProductSerializer(products, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class AdminBulkUploadProductView(APIView):
-    """
-    Admin: Bulk upload products from CSV
-    """
+
+
+
+
+
+class CategoryProductFilterPagination(PageNumberPagination):
+    page_size = 10  # default page size
+    page_size_query_param = 'page_size'  #
+    max_page_size = 100
+
+
+class CategoryProductFilterView(generics.ListAPIView):
+    serializer_class = ProductSerializer
+    permission_classes = [permissions.AllowAny]
+    pagination_class = CategoryProductFilterPagination
+
+    def get_queryset(self):
+        category_id = self.request.query_params.get("category")
+        query = self.request.query_params.get("q")
+        min_price = self.request.query_params.get("min_price")
+        max_price = self.request.query_params.get("max_price")
+        price_sort = self.request.query_params.get("price_sort")
+        name_sort = self.request.query_params.get("name_sort")
+
+        if not category_id:
+            return Products.objects.none()  # return empty queryset if category not provided
+
+        products = Products.objects.filter(category__id=category_id)
+
+        # Search by title or description
+        if query:
+            products = products.filter(Q(title__icontains=query) | Q(description__icontains=query))
+
+        # Filter by price range
+        if min_price:
+            try:
+                products = products.filter(price__gte=float(min_price))
+            except ValueError:
+                pass  # ignore invalid min_price
+
+        if max_price:
+            try:
+                products = products.filter(price__lte=float(max_price))
+            except ValueError:
+                pass  # ignore invalid max_price
+
+        # Sorting
+        if price_sort:
+            products = products.order_by("price" if price_sort.lower() == "asc" else "-price")
+        elif name_sort:
+            products = products.order_by("title" if name_sort.lower() == "asc" else "-title")
+
+        return products
+
+
+
+
+class BulkUploadProductView(APIView):
     permission_classes = [permissions.IsAdminUser]
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request):
+        """
+        Bulk upload products from a CSV file.
+        CSV format must include:
+        title, category, colors, available_stock, price, description, images (pipe-separated URLs)
+        """
         if 'file' not in request.FILES:
             return Response({"detail": "No file provided."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -181,24 +320,33 @@ class AdminBulkUploadProductView(APIView):
 
         for row in reader:
             try:
-                # Category
+                # --- Category ---
                 category_name = row.get('category')
                 if not category_name:
                     raise ValueError("Category is missing.")
                 category, _ = ProductCategory.objects.get_or_create(name=category_name)
 
-                # Colors
+                # --- Colors ---
                 colors = [c.strip() for c in row.get('colors', '').split(',') if c.strip()]
 
-                # Discount
-                discount = row.get('discount', 0)
-                try:
-                    discount = float(discount)
-                    if discount < 0 or discount > 100:
-                        discount = 0
-                except ValueError:
-                    discount = 0
+                # --- Images (download and save) ---
+                image_paths = []
+                for url in row.get('images', '').split('|'):
+                    url = url.strip()
+                    if not url:
+                        continue
+                    try:
+                        response = requests.get(url, timeout=5)
+                        response.raise_for_status()
+                        ext = url.split('.')[-1]
+                        seo_name = f"{slugify(row['title'])}-{uuid.uuid4().hex}.{ext}"
+                        full_path = f'product_images/{seo_name}'
+                        default_storage.save(full_path, ContentFile(response.content))
+                        image_paths.append(full_path)
+                    except Exception as e:
+                        logger.warning(f"Failed to download image {url}: {str(e)}")
 
+                # --- Product data ---
                 product_data = {
                     'title': row.get('title'),
                     'product_code': row.get('product_code', ''),
@@ -207,8 +355,7 @@ class AdminBulkUploadProductView(APIView):
                     'available_stock': row.get('available_stock', 0),
                     'price': row.get('price', 0),
                     'description': row.get('description', ''),
-                    'discount': discount,
-                    'status': row.get('status', ProductStatus.INACTIVE),
+                    'images': image_paths
                 }
 
                 serializer = ProductSerializer(data=product_data)
@@ -226,6 +373,33 @@ class AdminBulkUploadProductView(APIView):
             "created_products": created_products,
             "failed_rows": failed_rows
         }, status=status.HTTP_201_CREATED)
+
+    def delete(self, request):
+        """
+        Bulk delete products by IDs.
+        Request body example:
+        {
+            "ids": [1, 2, 3]
+        }
+        """
+        ids = request.data.get("ids", [])
+        if not ids:
+            return Response({"error": "No product IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        products = Products.objects.filter(id__in=ids)
+        deleted_count = products.count()
+
+        # Optional: Delete images from storage
+        for product in products:
+            if product.images:
+                for path in product.images:
+                    try:
+                        default_storage.delete(path)
+                    except Exception as e:
+                        logger.warning(f"Failed to delete image {path}: {str(e)}")
+
+        products.delete()
+        return Response({"message": f"{deleted_count} products deleted successfully"}, status=status.HTTP_200_OK)
 
 
 # -------------------------
@@ -306,3 +480,4 @@ class UserProductSearchView(generics.ListAPIView):
                 pass
 
         return products
+

@@ -42,10 +42,11 @@ class ProductSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "product_code", "images", "discounted_price"]
 
-    # HEX validation
+    # ----------------------
+    # Helpers
+    # ----------------------
     def _is_valid_hex(self, color):
-        hex_pattern = re.compile(r"^#(?:[0-9a-fA-F]{3}){1,2}$")
-        return bool(hex_pattern.match(color))
+        return bool(re.match(r"^#(?:[0-9a-fA-F]{3}){1,2}$", color))
 
     def _normalize_colors(self, colors):
         if not colors:
@@ -63,47 +64,69 @@ class ProductSerializer(serializers.ModelSerializer):
             normalized.append(c.upper())
         return normalized
 
-    # Discount validation
+    # ----------------------
+    # Validators
+    # ----------------------
     def validate_discount(self, value):
         if value < 0 or value > 100:
             raise serializers.ValidationError("Discount must be between 0 and 100.")
         return value
 
     def get_discounted_price(self, obj):
-        return float(obj.price - (obj.price * obj.discount / 100)) if obj.discount > 0 else float(obj.price)
+        try:
+            return float(obj.price - (obj.price * obj.discount / 100)) if obj.discount > 0 else float(obj.price)
+        except Exception:
+            return float(obj.price)
 
-    # Create product
+    # ----------------------
+    # Images handling
+    # ----------------------
+    def _upload_images(self, images):
+        """Upload list of images to Cloudinary and return URLs"""
+        urls = []
+        for image in images:
+            result = upload(image, folder="products")  # optional folder
+            url = result.get("secure_url")
+            if url:
+                urls.append(url)
+        return urls
+
+    # ----------------------
+    # Create / Update
+    # ----------------------
     def create(self, validated_data):
+        # Normalize colors
         colors = self.initial_data.get("colors", [])
         validated_data["colors"] = self._normalize_colors(colors)
 
+        # Pop uploaded images
         images = validated_data.pop("images_upload", [])
+
+        # Create product
         product = Products.objects.create(**validated_data)
 
-        # Upload images to Cloudinary
-        image_urls = []
-        for image in images:
-            result = upload(image)
-            image_urls.append(result['secure_url'])
+        # Upload images
+        if images:
+            product.images = self._upload_images(images)
+            product.save()
 
-        product.images = image_urls
-        product.save()
         return product
 
-    # Update product
     def update(self, instance, validated_data):
+        # Normalize colors if provided
         colors = self.initial_data.get("colors", None)
         if colors is not None:
             instance.colors = self._normalize_colors(colors)
 
-        images = validated_data.pop("images_upload", [])
+        # Handle new uploaded images
+        images = validated_data.pop("images_upload", None)
+        replace_images = self.initial_data.get("replace_images", False)  
         if images:
-            # Keep existing images
-            image_urls = instance.images if instance.images else []
-            for image in images:
-                result = upload(image)
-                image_urls.append(result['secure_url'])
-            instance.images = image_urls
+            uploaded_urls = self._upload_images(images)
+            if replace_images:
+                instance.images = uploaded_urls
+            else:
+                instance.images = (instance.images or []) + uploaded_urls
 
         # Update other fields
         for attr, value in validated_data.items():

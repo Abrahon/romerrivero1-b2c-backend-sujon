@@ -13,3 +13,8 @@ class OrderStatus(models.TextChoices):
     SHIPPED = "shipped", "Shipped"
     DELIVERED = "delivered", "Delivered"
     CANCELLED = "cancelled", "Cancelled"
+
+
+class PaymentMethodChoices(models.TextChoices):
+    COD = "COD", "Cash on Delivery"
+    ONLINE = "ONLINE", "Online Payment"

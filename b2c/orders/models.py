@@ -6,6 +6,7 @@ import secrets
 from common.models import TimeStampedModel
 from .enums import OrderStatus
 from b2c.products.models import Products
+from .enums import OrderStatus, PaymentMethodChoices
 
 
 # ---------------------- ORDER ----------------------
@@ -15,9 +16,14 @@ class Order(TimeStampedModel):
         on_delete=models.CASCADE,
         related_name="orders"
     )
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PaymentMethodChoices.choices,
+        default=PaymentMethodChoices.COD
+    )
     order_number = models.CharField(max_length=255, unique=True, editable=False)
     shipping_address = models.ForeignKey(
-        "checkout.Shipping",  # String reference avoids circular import
+        "checkout.Shipping", 
         on_delete=models.SET_NULL,
         null=True,
         related_name='orders'

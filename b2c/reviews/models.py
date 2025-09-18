@@ -11,4 +11,4 @@ class Review(TimeStampedModel):
     comment = models.TextField(blank=True)  
 
     def __str__(self):
-        return f"{self.user.username} - {self.product.name} - {self.rating}⭐"
+        return f"{self.user.email} - {self.product.name} - {self.rating}⭐"
