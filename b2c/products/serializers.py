@@ -141,77 +141,42 @@ from .models import Products, ProductCategory
 from django.utils import timezone
 import cloudinary.uploader
 
-from django.utils import timezone
+
 import cloudinary.uploader
 from rest_framework import serializers
 from .models import ProductCategory
-
-# class CategorySerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = ProductCategory
-#         fields = ["id", "name", "icon"]
-    
-#     def get_icon(self, obj):
-#         if obj.icon:
-#             return obj.icon.url  # ✅ Full Cloudinary URL
-#         return None
-
-#     def create(self, validated_data):
-#         request = self.context.get("request")
-#         icon_file = request.FILES.get("icon")  
-#         if icon_file:
-#             upload_result = cloudinary.uploader.upload(icon_file)
-#             validated_data["icon"] = upload_result.get("secure_url")
-#         return super().create(validated_data)
-
-#     def update(self, instance, validated_data):
-#         request = self.context.get("request")
-#         icon_file = request.FILES.get("icon")  # Allow updating icon
-#         if icon_file:
-#             upload_result = cloudinary.uploader.upload(icon_file)
-#             validated_data["icon"] = upload_result.get("secure_url")
-#         return super().update(instance, validated_data)
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductCategory
         fields = ["id", "name", "icon"]
-
-    def to_representation(self, instance):
-        """Always return clean Cloudinary URL for icon"""
-        data = super().to_representation(instance)
-        icon = data.get("icon")
-
-        if icon:
-            # If it still contains "image/upload/", strip it out
-            if icon.startswith("image/upload/"):
-                # remove the prefix and keep only the Cloudinary secure_url part
-                clean_url = icon.replace("image/upload/", "")
-                data["icon"] = clean_url
-
-        return data
+    
+    def get_icon(self, obj):
+        if obj.icon:
+            return obj.icon.url  # ✅ Full Cloudinary URL
+        return None
 
     def create(self, validated_data):
         request = self.context.get("request")
-        icon_file = request.FILES.get("icon")
+        icon_file = request.FILES.get("icon")  
         if icon_file:
             upload_result = cloudinary.uploader.upload(icon_file)
-            validated_data["icon"] = upload_result.get("secure_url")  # ✅ save full URL
+            validated_data["icon"] = upload_result.get("secure_url")
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
         request = self.context.get("request")
-        icon_file = request.FILES.get("icon")
+        icon_file = request.FILES.get("icon")  # Allow updating icon
         if icon_file:
             upload_result = cloudinary.uploader.upload(icon_file)
-            validated_data["icon"] = upload_result.get("secure_url") 
+            validated_data["icon"] = upload_result.get("secure_url")
         return super().update(instance, validated_data)
+
 
 
 class ProductSerializer(serializers.ModelSerializer):
     category = serializers.PrimaryKeyRelatedField(queryset=ProductCategory.objects.all())
     category_detail = CategorySerializer(source="category", read_only=True)
-    image = serializers.SerializerMethodField()
     colors = serializers.ListField(
         child=serializers.CharField(), required=True, allow_empty=True
     )
@@ -251,16 +216,6 @@ class ProductSerializer(serializers.ModelSerializer):
             "limited_deal_end",
         ]
         read_only_fields = ["id", "product_code", "images", "discounted_price"]
-
-    def get_discounted_price(self, obj):
-        now = timezone.now()
-        if obj.limited_deal_price and obj.limited_deal_start and obj.limited_deal_end:
-            start = timezone.localtime(obj.limited_deal_start)
-            end = timezone.localtime(obj.limited_deal_end)
-            now_local = timezone.localtime(now)
-            if start <= now_local <= end:
-                return float(obj.limited_deal_price)
-        return float(obj.price - (obj.price * obj.discount / 100)) if obj.discount > 0 else float(obj.price)
 
     # ----------------------
     # Helpers
