@@ -40,9 +40,6 @@ class CompanyDetailsSerializer(serializers.ModelSerializer):
         return None
 
 
-
-
-
 class EmailSecuritySerializer(serializers.ModelSerializer):
     primary_email = serializers.EmailField(source="user.email", read_only=True) 
 

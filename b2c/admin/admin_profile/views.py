@@ -13,8 +13,6 @@ from .serializers import (
 )
 
 # ---------------------- Admin Profile Views ---------------------- #
-
-
 class AdminProfileListCreateAPIView(generics.ListCreateAPIView):
     queryset = AdminProfile.objects.all()
     serializer_class = AdminProfileSerializer
@@ -80,6 +78,7 @@ class CompanyDetailsListCreateAPIView(generics.ListCreateAPIView):
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
 
 
 class CompanyDetailsRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):

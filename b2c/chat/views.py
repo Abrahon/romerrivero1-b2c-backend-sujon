@@ -93,3 +93,10 @@ class UpdateMessageView(APIView):
         message.save(update_fields=['content'])
         serializer = MessageSerializer(message)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+class AdminMessageListView(generics.ListAPIView):
+    serializer_class = MessageSerializer
+    permission_classes = [IsAdminUser]
+
+    def get_queryset(self):
+        return Message.objects.all()
