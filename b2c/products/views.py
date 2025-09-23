@@ -1,747 +1,4 @@
-# # from rest_framework import generics, permissions, status
-# # from rest_framework.response import Response
-# # from rest_framework.views import APIView
-# # from rest_framework.parsers import MultiPartParser, FormParser
-# # from django_filters.rest_framework import DjangoFilterBackend
-# # from django.db.models import Q
-# # from django.utils.text import slugify
-# # import csv
-# # import uuid
-# # import logging
-# # import django_filters
-# # import csv
-# # import uuid
-# # import requests
-# # from django.core.files.base import ContentFile
-# # from django.core.files.storage import default_storage
-# # from django.utils.text import slugify
-# # from rest_framework import status, permissions
-# # from rest_framework.views import APIView
-# # from rest_framework.response import Response
-# # from rest_framework.parsers import MultiPartParser, FormParser
-# # from .models import Products, ProductCategory
-# # from .serializers import ProductSerializer
-# # import logging
-# # from rest_framework import generics, permissions
-# # from rest_framework.pagination import PageNumberPagination
 
-
-
-
-# # logger = logging.getLogger(__name__)
-
-# # from .models import Products, ProductCategory
-# # from .serializers import ProductSerializer, CategorySerializer
-# # from .enums import ProductStatus
-
-# # logger = logging.getLogger(__name__)
-
-# # # -------------------------
-# # # ===== ADMIN VIEWS =====
-# # # -------------------------
-
-# # class AdminCategoryListCreateView(generics.ListCreateAPIView):
-# #     queryset = ProductCategory.objects.all()
-# #     serializer_class = CategorySerializer
-# #     permission_classes = [permissions.IsAdminUser]
-
-
-
-# # class AdminCategoryProductListView(generics.ListAPIView):
-# #     """
-# #     Admin: List products of a category
-# #     """
-# #     serializer_class = ProductSerializer
-# #     permission_classes = [permissions.IsAdminUser]
-
-# #     def get_queryset(self):
-# #         category_id = self.kwargs.get("category_id")
-# #         print(category_id.id)
-# #         return Products.objects.filter(category_id=category_id)
-
-
-# # class AdminProductListCreateView(generics.ListCreateAPIView):
-# #     """
-# #     Admin: List all products and create product
-# #     """
-# #     queryset = Products.objects.all()
-# #     serializer_class = ProductSerializer
-# #     permission_classes = [permissions.IsAdminUser]
-# #     parser_classes = [MultiPartParser, FormParser]
-# #     filter_backends = [DjangoFilterBackend]
-# #     filterset_fields = ['category', 'status']
-
-# #     def create(self, request, *args, **kwargs):
-# #         try:
-# #             data = request.data.copy()
-            
-# #             # Discount handling
-# #             discount = data.get("discount", 0)
-# #             try:
-# #                 discount = float(discount)
-# #                 if discount < 0 or discount > 100:
-# #                     return Response({"error": "Discount must be between 0 and 100."},
-# #                                     status=status.HTTP_400_BAD_REQUEST)
-# #                 data["discount"] = discount
-# #             except ValueError:
-# #                 return Response({"error": "Discount must be a number."},
-# #                                 status=status.HTTP_400_BAD_REQUEST)
-
-# #             serializer = self.get_serializer(data=data)
-# #             serializer.is_valid(raise_exception=True)
-# #             self.perform_create(serializer)
-# #             return Response({
-# #                 "message": "✅ Product added successfully!",
-# #                 "product": serializer.data
-# #             }, status=status.HTTP_201_CREATED)
-
-# #         except Exception as e:
-# #             logger.error(f"Error creating product: {str(e)}")
-# #             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-
-# # class AdminProductRetrieveUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
-# #     """
-# #     Admin: Retrieve, update or delete product
-# #     """
-# #     queryset = Products.objects.all()
-# #     serializer_class = ProductSerializer
-# #     permission_classes = [permissions.IsAdminUser]
-# #     parser_classes = [MultiPartParser, FormParser]
-# #     lookup_field = "id"
-# #     lookup_url_kwarg = "id"
-
-# #     def update(self, request, *args, **kwargs):
-# #         try:
-# #             response = super().update(request, *args, **kwargs)
-# #             return Response({
-# #                 "message": "✅ Product updated successfully!",
-# #                 "product": response.data
-# #             }, status=status.HTTP_200_OK)
-# #         except Exception as e:
-# #             logger.error(f"Error updating product: {str(e)}")
-# #             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-# #     def destroy(self, request, *args, **kwargs):
-# #         instance = self.get_object()
-# #         product_title = instance.title
-# #         self.perform_destroy(instance)
-# #         return Response({
-# #             "message": f"🗑️ Product '{product_title}' deleted successfully!"
-# #         }, status=status.HTTP_200_OK)
-
-
-# # class AdminProductBulkDelete(APIView):
-# #     """
-# #     Admin: Bulk delete products by IDs
-# #     """
-# #     permission_classes = [permissions.IsAdminUser]
-
-# #     def delete(self, request, *args, **kwargs):
-# #         ids = request.data.get("ids", [])
-# #         if not ids:
-# #             return Response({"error": "No product IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
-# #         deleted_count, _ = Products.objects.filter(id__in=ids).delete()
-# #         return Response({
-# #             "message": f"🗑️ {deleted_count} products deleted successfully"
-# #         }, status=status.HTTP_200_OK)
-
-# #     """
-# #     Admin: Bulk delete products by IDs
-# #     """
-# #     permission_classes = [permissions.IsAdminUser]
-
-# #     def delete(self, request, *args, **kwargs):
-# #         ids = request.data.get("ids", [])
-# #         if not ids:
-# #             return Response({"error": "No product IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
-# #         deleted_count, _ = Products.objects.filter(id__in=ids).delete()
-# #         return Response({"message": f"{deleted_count} products deleted successfully"}, status=status.HTTP_200_OK)
-
-
-
-# # class AdminProductStatusListView(generics.ListAPIView):
-# #     """
-# #     Admin: Filter products by status
-# #     """
-# #     serializer_class = ProductSerializer
-# #     permission_classes = [permissions.IsAdminUser]
-
-# #     def get_queryset(self):
-# #         status_param = self.request.query_params.get("status", "").strip().lower()
-# #         if status_param == "active":
-# #             return Products.objects.filter(status=ProductStatus.ACTIVE)
-# #         elif status_param == "inactive":
-# #             return Products.objects.filter(status=ProductStatus.INACTIVE)
-# #         return Products.objects.none()
-    
-# # # search filter
-# # class ProductSearchFilterView(APIView):
-# #     permission_classes = [permissions.AllowAny]
-
-# #     def get(self, request):
-# #         query = request.query_params.get("q")
-# #         category = request.query_params.get("category")
-# #         min_price = request.query_params.get("min_price")
-# #         max_price = request.query_params.get("max_price")
-# #         price_sort = request.query_params.get("price_sort")  # "asc" or "desc"
-# #         name_sort = request.query_params.get("name_sort")    # "asc" or "desc"
-
-# #         products = Products.objects.all()
-
-# #         # --- Search by title or description ---
-# #         if query:
-# #             products = products.filter(
-# #                 Q(title__icontains=query) | Q(description__icontains=query)
-# #             )
-
-# #         # --- Filter by category ---
-# #         if category:
-# #             products = products.filter(category__id=category)
-
-# #         # --- Filter by price range ---
-# #         if min_price:
-# #             try:
-# #                 min_price_val = float(min_price)
-# #                 products = products.filter(price__gte=min_price_val)
-# #             except ValueError:
-# #                 return Response({"error": "Invalid min_price"}, status=status.HTTP_400_BAD_REQUEST)
-
-# #         if max_price:
-# #             try:
-# #                 max_price_val = float(max_price)
-# #                 products = products.filter(price__lte=max_price_val)
-# #             except ValueError:
-# #                 return Response({"error": "Invalid max_price"}, status=status.HTTP_400_BAD_REQUEST)
-
-# #         # --- Sort by price ---
-# #         if price_sort:
-# #             if price_sort.lower() == "asc":
-# #                 products = products.order_by("price")
-# #             elif price_sort.lower() == "desc":
-# #                 products = products.order_by("-price")
-
-# #         # --- Sort by name (A-Z or Z-A) ---
-# #         if name_sort:
-# #             if name_sort.lower() == "asc":
-# #                 products = products.order_by("title")
-# #             elif name_sort.lower() == "desc":
-# #                 products = products.order_by("-title")
-
-# #         # --- Error handling ---
-# #         if not products.exists():
-# #             return Response({"error": "No products found."}, status=status.HTTP_404_NOT_FOUND)
-
-# #         serializer = ProductSerializer(products, many=True)
-# #         return Response(serializer.data, status=status.HTTP_200_OK)
-
-# # class CategoryProductFilterPagination(PageNumberPagination):
-# #     page_size = 10  # default page size
-# #     page_size_query_param = 'page_size'  #
-# #     max_page_size = 100
-
-
-# # class CategoryProductFilterView(generics.ListAPIView):
-# #     serializer_class = ProductSerializer
-# #     permission_classes = [permissions.AllowAny]
-# #     pagination_class = CategoryProductFilterPagination
-
-# #     def get_queryset(self):
-# #         category_id = self.request.query_params.get("category")
-# #         query = self.request.query_params.get("q")
-# #         min_price = self.request.query_params.get("min_price")
-# #         max_price = self.request.query_params.get("max_price")
-# #         price_sort = self.request.query_params.get("price_sort")
-# #         name_sort = self.request.query_params.get("name_sort")
-
-# #         if not category_id:
-# #             return Products.objects.none()  # return empty queryset if category not provided
-
-# #         products = Products.objects.filter(category__id=category_id)
-
-# #         # Search by title or description
-# #         if query:
-# #             products = products.filter(Q(title__icontains=query) | Q(description__icontains=query))
-
-# #         # Filter by price range
-# #         if min_price:
-# #             try:
-# #                 products = products.filter(price__gte=float(min_price))
-# #             except ValueError:
-# #                 pass  # ignore invalid min_price
-
-# #         if max_price:
-# #             try:
-# #                 products = products.filter(price__lte=float(max_price))
-# #             except ValueError:
-# #                 pass  # ignore invalid max_price
-
-# #         # Sorting
-# #         if price_sort:
-# #             products = products.order_by("price" if price_sort.lower() == "asc" else "-price")
-# #         elif name_sort:
-# #             products = products.order_by("title" if name_sort.lower() == "asc" else "-title")
-
-# #         return products
-
-
-# import csv
-# import uuid
-# import logging
-# import requests
-# from django.utils.text import slugify
-# from django.core.files.base import ContentFile
-# from django.core.files.storage import default_storage
-# from django.db.models import Q
-# from django.utils import timezone
-
-# from rest_framework import generics, permissions, status
-# from rest_framework.views import APIView
-# from rest_framework.response import Response
-# from rest_framework.parsers import MultiPartParser, FormParser
-# from rest_framework.pagination import PageNumberPagination
-# from django_filters.rest_framework import DjangoFilterBackend
-
-# from .models import Products, ProductCategory
-# from .serializers import ProductSerializer, CategorySerializer
-# from .enums import ProductStatus
-
-# logger = logging.getLogger(__name__)
-
-# # -------------------------
-# # ===== ADMIN CATEGORY VIEWS =====
-# # -------------------------
-
-# class AdminCategoryListCreateView(generics.ListCreateAPIView):
-#     queryset = ProductCategory.objects.all()
-#     serializer_class = CategorySerializer
-#     permission_classes = [permissions.IsAdminUser]
-
-#     def create(self, request, *args, **kwargs):
-#         try:
-#             serializer = self.get_serializer(data=request.data)
-#             serializer.is_valid(raise_exception=True)
-#             self.perform_create(serializer)
-#             return Response({
-#                 "message": "✅ Category created successfully!",
-#                 "category": serializer.data
-#             }, status=status.HTTP_201_CREATED)
-#         except Exception as e:
-#             logger.error(f"Error creating category: {str(e)}")
-#             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-
-# class AdminCategoryRetrieveUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
-#     queryset = ProductCategory.objects.all()
-#     serializer_class = CategorySerializer
-#     permission_classes = [permissions.IsAdminUser]
-#     lookup_field = "id"
-#     lookup_url_kwarg = "id"
-
-#     def update(self, request, *args, **kwargs):
-#         try:
-#             response = super().update(request, *args, **kwargs)
-#             return Response({
-#                 "message": "✅ Category updated successfully!",
-#                 "category": response.data
-#             }, status=status.HTTP_200_OK)
-#         except Exception as e:
-#             logger.error(f"Error updating category: {str(e)}")
-#             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-#     def destroy(self, request, *args, **kwargs):
-#         instance = self.get_object()
-#         category_name = instance.name
-#         if instance.products.exists():
-#             return Response(
-#                 {"error": f"Cannot delete category '{category_name}' because it has products."},
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-#         self.perform_destroy(instance)
-#         return Response({
-#             "message": f"🗑️ Category '{category_name}' deleted successfully!"
-#         }, status=status.HTTP_200_OK)
-
-
-# class AdminCategoryBulkDeleteView(APIView):
-#     permission_classes = [permissions.IsAdminUser]
-
-#     def delete(self, request):
-#         ids = request.data.get("ids", [])
-#         if not ids:
-#             return Response({"error": "No category IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
-
-#         categories = ProductCategory.objects.filter(id__in=ids)
-#         deleted_count = 0
-#         failed = []
-
-#         for c in categories:
-#             if c.products.exists():
-#                 failed.append(c.name)
-#                 continue
-#             c.delete()
-#             deleted_count += 1
-
-#         return Response({
-#             "message": f"{deleted_count} categories deleted successfully",
-#             "failed": failed
-#         }, status=status.HTTP_200_OK)
-
-# # -------------------------
-# # ===== ADMIN PRODUCT VIEWS =====
-# # -------------------------
-
-# class AdminProductListCreateView(generics.ListCreateAPIView):
-#     queryset = Products.objects.all()
-#     serializer_class = ProductSerializer
-#     permission_classes = [permissions.IsAdminUser]
-#     parser_classes = [MultiPartParser, FormParser]
-#     filter_backends = [DjangoFilterBackend]
-#     filterset_fields = ['category', 'status']
-
-#     def create(self, request, *args, **kwargs):
-#         try:
-#             data = request.data.copy()
-#             discount = data.get("discount", 0)
-#             try:
-#                 discount = float(discount)
-#                 if discount < 0 or discount > 100:
-#                     return Response({"error": "Discount must be between 0 and 100."},
-#                                     status=status.HTTP_400_BAD_REQUEST)
-#                 data["discount"] = discount
-#             except ValueError:
-#                 return Response({"error": "Discount must be a number."},
-#                                 status=status.HTTP_400_BAD_REQUEST)
-
-#             serializer = self.get_serializer(data=data)
-#             serializer.is_valid(raise_exception=True)
-#             self.perform_create(serializer)
-#             return Response({
-#                 "message": "✅ Product added successfully!",
-#                 "product": serializer.data
-#             }, status=status.HTTP_201_CREATED)
-
-#         except Exception as e:
-#             logger.error(f"Error creating product: {str(e)}")
-#             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-
-# class AdminProductRetrieveUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
-#     queryset = Products.objects.all()
-#     serializer_class = ProductSerializer
-#     permission_classes = [permissions.IsAdminUser]
-#     parser_classes = [MultiPartParser, FormParser]
-#     lookup_field = "id"
-#     lookup_url_kwarg = "id"
-
-#     def update(self, request, *args, **kwargs):
-#         try:
-#             response = super().update(request, *args, **kwargs)
-#             return Response({
-#                 "message": "✅ Product updated successfully!",
-#                 "product": response.data
-#             }, status=status.HTTP_200_OK)
-#         except Exception as e:
-#             logger.error(f"Error updating product: {str(e)}")
-#             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-#     def destroy(self, request, *args, **kwargs):
-#         instance = self.get_object()
-#         product_title = instance.title
-#         self.perform_destroy(instance)
-#         return Response({
-#             "message": f"🗑️ Product '{product_title}' deleted successfully!"
-#         }, status=status.HTTP_200_OK)
-
-
-# class AdminProductBulkDelete(APIView):
-#     permission_classes = [permissions.IsAdminUser]
-
-#     def delete(self, request, *args, **kwargs):
-#         ids = request.data.get("ids", [])
-#         if not ids:
-#             return Response({"error": "No product IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
-#         products = Products.objects.filter(id__in=ids)
-#         deleted_count = products.count()
-
-#         # Optional: Delete images
-#         for product in products:
-#             if product.images:
-#                 for path in product.images:
-#                     try:
-#                         default_storage.delete(path)
-#                     except Exception as e:
-#                         logger.warning(f"Failed to delete image {path}: {str(e)}")
-
-#         products.delete()
-#         return Response({"message": f"{deleted_count} products deleted successfully"}, status=status.HTTP_200_OK)
-
-
-# class AdminProductStatusListView(generics.ListAPIView):
-#     serializer_class = ProductSerializer
-#     permission_classes = [permissions.IsAdminUser]
-
-#     def get_queryset(self):
-#         status_param = self.request.query_params.get("status", "").strip().lower()
-#         if status_param == "active":
-#             return Products.objects.filter(status=ProductStatus.ACTIVE)
-#         elif status_param == "inactive":
-#             return Products.objects.filter(status=ProductStatus.INACTIVE)
-#         return Products.objects.none()
-
-
-# # -------------------------
-# # ===== USER CATEGORY & PRODUCT VIEWS =====
-# # -------------------------
-
-# class UserCategoryListView(generics.ListAPIView):
-#     queryset = ProductCategory.objects.all()
-#     serializer_class = CategorySerializer
-#     permission_classes = [permissions.IsAuthenticated]
-
-
-# class UserCategoryProductListView(generics.ListAPIView):
-#     serializer_class = ProductSerializer
-#     permission_classes = [permissions.IsAuthenticated]
-
-#     def get_queryset(self):
-#         category_id = self.kwargs.get("category_id")
-#         return Products.objects.filter(category_id=category_id, status=ProductStatus.ACTIVE)
-
-
-# class UserProductListView(generics.ListAPIView):
-#     queryset = Products.objects.filter(status=ProductStatus.ACTIVE)
-#     serializer_class = ProductSerializer
-#     permission_classes = [permissions.IsAuthenticated]
-#     filter_backends = [DjangoFilterBackend]
-#     filterset_fields = ['category']
-
-
-# class UserProductDetailView(generics.RetrieveAPIView):
-#     queryset = Products.objects.filter(status=ProductStatus.ACTIVE)
-#     serializer_class = ProductSerializer
-#     permission_classes = [permissions.IsAuthenticated]
-#     lookup_field = "id"
-#     lookup_url_kwarg = "id"
-
-
-# class UserProductSearchView(generics.ListAPIView):
-#     serializer_class = ProductSerializer
-#     permission_classes = [permissions.IsAuthenticated]
-
-#     def get_queryset(self):
-#         query = self.request.query_params.get("q", "")
-#         min_price = self.request.query_params.get("min_price")
-#         max_price = self.request.query_params.get("max_price")
-#         products = Products.objects.filter(status=ProductStatus.ACTIVE)
-
-#         if query:
-#             products = products.filter(Q(title__icontains=query) | Q(description__icontains=query))
-#         if min_price:
-#             try:
-#                 products = products.filter(price__gte=float(min_price))
-#             except ValueError:
-#                 pass
-#         if max_price:
-#             try:
-#                 products = products.filter(price__lte=float(max_price))
-#             except ValueError:
-#                 pass
-#         return products
-
-
-# # -------------------------
-# # ===== CATEGORY FILTER + PAGINATION =====
-# # -------------------------
-# class CategoryProductFilterPagination(PageNumberPagination):
-#     page_size = 10
-#     page_size_query_param = 'page_size'
-#     max_page_size = 100
-
-
-# class CategoryProductFilterView(generics.ListAPIView):
-#     serializer_class = ProductSerializer
-#     permission_classes = [permissions.AllowAny]
-#     pagination_class = CategoryProductFilterPagination
-
-#     def get_queryset(self):
-#         category_id = self.request.query_params.get("category")
-#         if not category_id:
-#             return Products.objects.none()
-#         products = Products.objects.filter(category__id=category_id)
-#         query = self.request.query_params.get("q")
-#         if query:
-#             products = products.filter(Q(title__icontains=query) | Q(description__icontains=query))
-#         min_price = self.request.query_params.get("min_price")
-#         max_price = self.request.query_params.get("max_price")
-#         if min_price:
-#             try:
-#                 products = products.filter(price__gte=float(min_price))
-#             except ValueError:
-#                 pass
-#         if max_price:
-#             try:
-#                 products = products.filter(price__lte=float(max_price))
-#             except ValueError:
-#                 pass
-#         price_sort = self.request.query_params.get("price_sort")
-#         name_sort = self.request.query_params.get("name_sort")
-#         if price_sort:
-#             products = products.order_by("price" if price_sort.lower() == "asc" else "-price")
-#         elif name_sort:
-#             products = products.order_by("title" if name_sort.lower() == "asc" else "-title")
-#         return products
-
-
-# # -------------------------
-# # ===== PRODUCT SEARCH/UPLOAD CSV =====
-# # -------------------------
-# class ProductSearchFilterView(APIView):
-#     permission_classes = [permissions.AllowAny]
-
-#     def get(self, request):
-#         query = request.query_params.get("q")
-#         category = request.query_params.get("category")
-#         min_price = request.query_params.get("min_price")
-#         max_price = request.query_params.get("max_price")
-#         price_sort = request.query_params.get("price_sort")
-#         name_sort = request.query_params.get("name_sort")
-
-#         products = Products.objects.all()
-#         if query:
-#             products = products.filter(Q(title__icontains=query) | Q(description__icontains=query))
-#         if category:
-#             products = products.filter(category__id=category)
-#         if min_price:
-#             try:
-#                 products = products.filter(price__gte=float(min_price))
-#             except ValueError:
-#                 return Response({"error": "Invalid min_price"}, status=status.HTTP_400_BAD_REQUEST)
-#         if max_price:
-#             try:
-#                 products = products.filter(price__lte=float(max_price))
-#             except ValueError:
-#                 return Response({"error": "Invalid max_price"}, status=status.HTTP_400_BAD_REQUEST)
-#         if price_sort:
-#             products = products.order_by("price" if price_sort.lower() == "asc" else "-price")
-#         if name_sort:
-#             products = products.order_by("title" if name_sort.lower() == "asc" else "-title")
-#         if not products.exists():
-#             return Response({"error": "No products found."}, status=status.HTTP_404_NOT_FOUND)
-#         serializer = ProductSerializer(products, many=True)
-#         return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-# class BulkUploadProductView(APIView):
-#     permission_classes = [permissions.IsAdminUser]
-#     parser_classes = [MultiPartParser, FormParser]
-
-#     def post(self, request):
-#         """
-#         Bulk upload products from a CSV file.
-#         CSV format must include:
-#         title, category, colors, available_stock, price, description, images (pipe-separated URLs)
-#         """
-#         if 'file' not in request.FILES:
-#             return Response({"detail": "No file provided."}, status=status.HTTP_400_BAD_REQUEST)
-
-#         file = request.FILES['file']
-
-#         try:
-#             file_data = file.read().decode('utf-8').splitlines()
-#             reader = csv.DictReader(file_data)
-#         except Exception as e:
-#             logger.error(f"CSV read error: {str(e)}")
-#             return Response({"detail": f"Error reading CSV: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
-
-#         created_products = []
-#         failed_rows = []
-
-#         for row in reader:
-#             try:
-#                 # --- Category ---
-#                 category_name = row.get('category')
-#                 if not category_name:
-#                     raise ValueError("Category is missing.")
-#                 category, _ = ProductCategory.objects.get_or_create(name=category_name)
-
-#                 # --- Colors ---
-#                 colors = [c.strip() for c in row.get('colors', '').split(',') if c.strip()]
-
-#                 # --- Images (download and save) ---
-#                 image_paths = []
-#                 for url in row.get('images', '').split('|'):
-#                     url = url.strip()
-#                     if not url:
-#                         continue
-#                     try:
-#                         response = requests.get(url, timeout=5)
-#                         response.raise_for_status()
-#                         ext = url.split('.')[-1]
-#                         seo_name = f"{slugify(row['title'])}-{uuid.uuid4().hex}.{ext}"
-#                         full_path = f'product_images/{seo_name}'
-#                         default_storage.save(full_path, ContentFile(response.content))
-#                         image_paths.append(full_path)
-#                     except Exception as e:
-#                         logger.warning(f"Failed to download image {url}: {str(e)}")
-
-#                 # --- Product data ---
-#                 product_data = {
-#                     'title': row.get('title'),
-#                     'product_code': row.get('product_code', ''),
-#                     'category': category.id,
-#                     'colors': colors,
-#                     'available_stock': row.get('available_stock', 0),
-#                     'price': row.get('price', 0),
-#                     'description': row.get('description', ''),
-#                     'images': image_paths
-#                 }
-
-#                 serializer = ProductSerializer(data=product_data)
-#                 if serializer.is_valid():
-#                     serializer.save()
-#                     created_products.append(serializer.data)
-#                 else:
-#                     failed_rows.append({"row": row, "errors": serializer.errors})
-
-#             except Exception as e:
-#                 failed_rows.append({"row": row, "errors": str(e)})
-#                 logger.error(f"Error processing row {row}: {str(e)}")
-
-#         return Response({
-#             "created_products": created_products,
-#             "failed_rows": failed_rows
-#         }, status=status.HTTP_201_CREATED)
-
-#     def delete(self, request):
-#         """
-#         Bulk delete products by IDs.
-#         Request body example:
-#         {
-#             "ids": [1, 2, 3]
-#         }
-#         """
-#         ids = request.data.get("ids", [])
-#         if not ids:
-#             return Response({"error": "No product IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
-
-#         products = Products.objects.filter(id__in=ids)
-#         deleted_count = products.count()
-
-#         # Optional: Delete images from storage
-#         for product in products:
-#             if product.images:
-#                 for path in product.images:
-#                     try:
-#                         default_storage.delete(path)
-#                     except Exception as e:
-#                         logger.warning(f"Failed to delete image {path}: {str(e)}")
-
-#         products.delete()
-#         return Response({"message": f"{deleted_count} products deleted successfully"}, status=status.HTTP_200_OK)
-
-
-# new
 import csv
 import uuid
 import logging
@@ -751,6 +8,9 @@ from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db.models import Q
 from django.utils import timezone
+from rest_framework import permissions, status
+from django.db.models import Q, Avg
+
 
 from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
@@ -762,8 +22,18 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .models import Products, ProductCategory
 from .serializers import ProductSerializer, CategorySerializer
 from .enums import ProductStatus
-from rest_framework.parsers import MultiPartParser, FormParser
+
 from rest_framework.permissions import AllowAny
+# b2c/products/views.py
+from rest_framework import generics
+from rest_framework.permissions import AllowAny
+from .models import Products
+from django.utils import timezone
+from django.db.models import Q
+from django.db.models import Avg, DecimalField
+from django.db.models.functions import Coalesce
+from rest_framework import generics, permissions
+from rest_framework.exceptions import ValidationError
 
 
 logger = logging.getLogger(__name__)
@@ -777,6 +47,7 @@ class AdminCategoryListCreateView(generics.ListCreateAPIView):
     serializer_class = CategorySerializer
     permission_classes = [permissions.IsAdminUser]
     parser_classes = (MultiPartParser, FormParser)
+    pagination_class = None
 
     def create(self, request, *args, **kwargs):
         try:
@@ -797,6 +68,8 @@ class AdminCategoryRetrieveUpdateDeleteView(generics.RetrieveUpdateDestroyAPIVie
     serializer_class = CategorySerializer
     permission_classes = [permissions.IsAdminUser]
     parser_classes = (MultiPartParser, FormParser)
+
+    pagination_class = None
     lookup_field = "id"
     lookup_url_kwarg = "id"
 
@@ -827,6 +100,7 @@ class AdminCategoryRetrieveUpdateDeleteView(generics.RetrieveUpdateDestroyAPIVie
 
 class AdminCategoryBulkDeleteView(APIView):
     permission_classes = [permissions.IsAdminUser]
+    permission_classes = None
 
     def delete(self, request):
         ids = request.data.get("ids", [])
@@ -956,18 +230,20 @@ class AdminProductStatusListView(generics.ListAPIView):
 # ===== USER CATEGORY & PRODUCT VIEWS =====
 # -------------------------
 
-from rest_framework.exceptions import ValidationError
+
 
 class UserCategoryListView(generics.ListAPIView):
     queryset = ProductCategory.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [AllowAny]   # ✅ ei jagay hobe
+    permission_classes = [AllowAny] 
+    pagination_class = None  # ✅ ei jagay hobe
 
 
 
 class UserCategoryProductListView(generics.ListAPIView):
     serializer_class = ProductSerializer
     permission_classes = [AllowAny]
+    pagination_class = None
 
     def get_queryset(self):
         category_id = self.kwargs.get("category_id")
@@ -976,15 +252,15 @@ class UserCategoryProductListView(generics.ListAPIView):
 
 
 # ------------------------
-# Top Products View
-# ------------------------
+
+
 class TopProductsView(generics.ListAPIView):
     serializer_class = ProductSerializer
     permission_classes = [permissions.AllowAny]
+    pagination_class = None
 
     def get_queryset(self):
         limit = self.request.query_params.get("limit", 10)
-
         try:
             limit = int(limit)
             if limit <= 0:
@@ -992,24 +268,22 @@ class TopProductsView(generics.ListAPIView):
         except ValueError:
             raise ValidationError({"error": "Invalid limit value. Must be a positive integer."})
 
-        queryset = Products.objects.filter(status="ACTIVE").order_by("-avg_rating")  # or "-sales_count" if you have sales
-        if not queryset.exists():
-            raise ValidationError({"error": "No top products found."})
+        # Annotate average rating
+        queryset = Products.objects.annotate(
+            average_rating=Coalesce(
+                Avg("reviews__rating"),
+                0.0,
+                output_field=DecimalField(max_digits=3, decimal_places=1)
+            )
+        ).order_by('-average_rating', '-id')
 
         return queryset[:limit]
-
 
 # ------------------------
 # Limited Deals Products View
 # ------------------------
 
-# b2c/products/views.py
-from rest_framework import generics
-from rest_framework.permissions import AllowAny
-from .models import Products
-from .serializers import ProductSerializer
-from django.utils import timezone
-from django.db.models import Q
+
 
 class LimitedDealsProductListView(generics.ListAPIView):
     serializer_class = ProductSerializer
@@ -1113,39 +387,73 @@ class CategoryProductFilterView(generics.ListAPIView):
 # -------------------------
 # ===== PRODUCT SEARCH/UPLOAD CSV =====
 # -------------------------
+
+
+
+
 class ProductSearchFilterView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         query = request.query_params.get("q")
-        category = request.query_params.get("category")
+        category_param = request.query_params.get("category")
         min_price = request.query_params.get("min_price")
         max_price = request.query_params.get("max_price")
         price_sort = request.query_params.get("price_sort")
         name_sort = request.query_params.get("name_sort")
+        min_rating = request.query_params.get("min_rating")
+        max_rating = request.query_params.get("max_rating")
 
-        products = Products.objects.all()
+        # Annotate products with average rating
+        products = Products.objects.all().annotate(average_rating=Avg("reviews__rating"))
+
+        # Search by title or description
         if query:
             products = products.filter(Q(title__icontains=query) | Q(description__icontains=query))
-        if category:
-            products = products.filter(category__id=category)
+
+        # Filter by category (id or name)
+        if category_param:
+            if category_param.isdigit():
+                products = products.filter(category__id=int(category_param))
+            else:
+                products = products.filter(category__name__icontains=category_param)
+
+        # Price filters
         if min_price:
             try:
                 products = products.filter(price__gte=float(min_price))
             except ValueError:
                 return Response({"error": "Invalid min_price"}, status=status.HTTP_400_BAD_REQUEST)
+
         if max_price:
             try:
                 products = products.filter(price__lte=float(max_price))
             except ValueError:
                 return Response({"error": "Invalid max_price"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Rating filters
+        if min_rating:
+            try:
+                products = products.filter(average_rating__gte=float(min_rating))
+            except ValueError:
+                return Response({"error": "Invalid min_rating"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if max_rating:
+            try:
+                products = products.filter(average_rating__lte=float(max_rating))
+            except ValueError:
+                return Response({"error": "Invalid max_rating"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Sorting
         if price_sort:
             products = products.order_by("price" if price_sort.lower() == "asc" else "-price")
         if name_sort:
             products = products.order_by("title" if name_sort.lower() == "asc" else "-title")
+
         if not products.exists():
             return Response({"error": "No products found."}, status=status.HTTP_404_NOT_FOUND)
-        serializer = ProductSerializer(products, many=True)
+
+        serializer = ProductSerializer(products, many=True, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 

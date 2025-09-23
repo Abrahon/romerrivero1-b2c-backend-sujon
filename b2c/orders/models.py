@@ -48,11 +48,27 @@ class OrderItem(models.Model):
         return (self.price or Decimal("0.00")) * self.quantity
 
 
+
 class OrderTracking(TimeStampedModel):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='tracking_history')
-    status = models.CharField(max_length=20, choices=OrderStatus.choices)
-    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='order_updates')
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name='tracking_history'
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=OrderStatus.choices 
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='order_updates'
+    )
     note = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return f"Order {self.order.order_number} - {self.status}"
+
+

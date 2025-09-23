@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from b2c.payments.views import StripeWebhookView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -28,7 +29,8 @@ urlpatterns = [
     path('b2c/api/',include('b2c.cart.urls')), 
     path('b2c/api/',include('b2c.checkout.urls')), 
     path('b2c/api/',include('b2c.orders.urls')), 
-    path('b2c/api/payment/',include('b2c.payments.urls')), 
+    path('b2c/api/payment/',include('b2c.payments.urls')),
+    path('webhook/', StripeWebhookView.as_view(), name='stripe-webhook'), 
     path('b2c/api/',include('b2c.reviews.urls')), 
     path('b2c/api/',include('b2c.chat.urls')), 
     path('b2c/api/',include('b2c.wishlist.urls')), 
@@ -37,6 +39,9 @@ urlpatterns = [
     # admin
     path('b2c/api/',include('b2c.admin.admin_profile.urls')),
     path('b2c/api/', include('b2c.user_profile.urls')),
+    path('b2c/api/', include('dashboard.urls')),
+    path('b2c/api/', include('visitors.urls')),
+    path('b2c/api/', include('b2c.customers.urls')),
     
     
 ]

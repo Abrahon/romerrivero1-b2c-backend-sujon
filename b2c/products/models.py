@@ -92,6 +92,7 @@ class ProductCategory(TimeStampedModel):
     id = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=255, unique=True)
     icon = CloudinaryField("category_icons", blank=True, null=True)
+    #  image = CloudinaryField("admin_profile", blank=True, null=True)  
     # icon = CloudinaryField("category_icons",  
     #     blank=True,
     #     null=True

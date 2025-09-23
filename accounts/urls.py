@@ -1,8 +1,17 @@
 # accounts/urls.py
 
 from django.urls import path, include
-from .views import SignupView, LoginView, SendOTPView, VerifyOTPView, ResetPasswordView, AdminCreateView
-
+from .views import (
+    SignupView, 
+    LoginView, 
+    SendOTPView, 
+    VerifyOTPView, 
+    ResetPasswordView, 
+    AdminCreateView,
+    GoogleCallbackView,
+    GoogleLoginView,
+    GoogleExchangeView,
+)
 urlpatterns = [
     # Your custom authentication views
     path('signup/', SignupView.as_view(), name='signup'),
@@ -15,4 +24,7 @@ urlpatterns = [
 
     # Social login URLs from django-allauth
     path('social/', include('allauth.socialaccount.urls')),  # Social login (Google, Facebook, Twitter)
+    path("google/login/", GoogleLoginView.as_view(), name="google_login"),
+    path("google/callback/", GoogleCallbackView.as_view(), name="google_callback"),
+    path("google/exchange/", GoogleExchangeView.as_view(), name="google_exchange")
 ]

@@ -31,6 +31,8 @@ from .views import (
     ReplyMessageView,
     DeleteMessageView,
     AdminMessageListView,  # Added
+    ChatBotList,
+    ChatBotCreateView
 )
 
 urlpatterns = [
@@ -55,4 +57,6 @@ urlpatterns = [
     path('admin/messages/<int:pk>/mark-read/', MarkMessageReadView.as_view(), name='admin-mark-read'),
     # Admin replies to a message
     path('admin/messages/<int:pk>/reply/', ReplyMessageView.as_view(), name='admin-reply-message'),
+    path('get-chatbot/', ChatBotList.as_view()),
+    path('chatbot/', ChatBotCreateView.as_view())
 ]

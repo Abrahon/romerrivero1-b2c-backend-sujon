@@ -100,3 +100,27 @@ class AdminMessageListView(generics.ListAPIView):
 
     def get_queryset(self):
         return Message.objects.all()
+    
+from .serializers import ChatBotSerializer
+from .models import ChatBot
+class ChatBotList(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = ChatBotSerializer
+    queryset = ChatBot.objects.all()
+
+
+class ChatBotCreateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        # Get 'query' from request body
+        query = request.data.get("query")
+        if not query:
+            return Response({"error": "Query is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create ChatBot entry
+        chatbot = ChatBot.objects.create(user=request.user, query=query)
+
+        # Serialize and return
+        serializer = ChatBotSerializer(chatbot)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)

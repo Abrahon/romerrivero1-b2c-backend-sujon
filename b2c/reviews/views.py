@@ -51,7 +51,6 @@ class ReviewUpdateAPIView(generics.UpdateAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        # ✅ Recalculate average rating after update
         avg_rating = Review.objects.filter(product=review.product).aggregate(avg=Avg("rating"))["avg"] or 0
         review.product.avg_rating = round(avg_rating, 1)
         review.product.save(update_fields=["avg_rating"])

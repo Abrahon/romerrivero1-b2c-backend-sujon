@@ -24,7 +24,7 @@ class UserProfile(TimeStampedModel):
 
     # Contact information
     country = models.CharField(max_length=100, blank=True)
-    phone_number = models.CharField(max_length=32, blank=True)   # store in E.164-like or local format
+    phone_number = models.CharField(max_length=32, blank=True)   
     contact_email = models.EmailField(blank=True)
 
     # Address

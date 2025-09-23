@@ -4,7 +4,7 @@ import os
 from datetime import timedelta
 from dotenv import load_dotenv
 import dj_database_url 
-
+from decouple import config
 # Load environment variables from the .env file
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(os  .path.join(BASE_DIR, '.env'))
@@ -54,7 +54,9 @@ INSTALLED_APPS = [
     # 'b2c.orders',
     'b2c.chat',
     'b2c.admin.admin_profile',
-    # 'b2c.admin.add_product',
+    'dashboard',
+    'visitors',
+    'b2c.customers',
    
     'b2c.orders.apps.OrdersConfig',  
     'b2c.payments.apps.PaymentsConfig',
@@ -118,7 +120,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',    
-    'allauth.account.middleware.AccountMiddleware',  
+    'allauth.account.middleware.AccountMiddleware',
+    'visitors.middleware.VisitorTrackingMiddleware',
+      
 ]
 
 # CORS settings
@@ -181,13 +185,43 @@ ACCOUNT_AUTHENTICATION_METHOD = 'email'
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_USERNAME_REQUIRED = False
 
-
+# google 
 SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = '649570633464-7p40grhfbe7o5347oq2244tvjr0kiv9v.apps.googleusercontent.com'
 SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = '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'
+SOCIALACCOUNT_PROVIDERS  = {
+    'google':{
+        'APP':{
+            'cliendt_id': '',
+            'secret': '',
+
+        }
+    }
+}
+
+# facebook 
+# SOCIALACCOUNT_PROVIDERS = {
+#     "google": {
+#         "SCOPE": ["profile", "email"],
+#         "AUTH_PARAMS": {"access_type": "online"},
+#     },
+#     "facebook": {
+#         "METHOD": "oauth2",
+#         "SCOPE": ["email", "public_profile"],
+#         "AUTH_PARAMS": {"auth_type": "reauthenticate"},
+#         "FIELDS": [
+#             "id",
+#             "email",
+#             "name",
+#             "first_name",
+#             "last_name",
+#             "picture",
+#         ],
+#     },
+# }
+
 
 
 ACCOUNT_SIGNUP_FIELDS = [ 'email*', 'password1*', 'password2*']
-# ACCOUNT_LOGIN_METHODS = ['email*', 'password1*']
 
 
 
@@ -248,3 +282,12 @@ LOGIN_URL = 'accounts_login'
 LOGOUT_URL = 'account_logout'  
 LOGIN_REDIRECT_URL = 'dashboard'  
 LOGOUT_REDIRECT_URL = 'userlogin'  
+
+
+# settings.py
+
+
+GOOGLE_CLIENT_ID = config("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = config("GOOGLE_CLIENT_SECRET")
+GOOGLE_REDIRECT_URI = config("GOOGLE_REDIRECT_URI")
+FRONTEND_REDIRECT_URL = config("FRONTEND_REDIRECT_URL")

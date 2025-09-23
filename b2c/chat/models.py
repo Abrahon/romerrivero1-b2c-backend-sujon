@@ -32,3 +32,16 @@ class Message(models.Model):
 
     def __str__(self):
         return f"Message from {self.sender.email[:20]}"
+
+
+class ChatBot(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='chatbot'
+    )
+    query = models.CharField()
+    answer = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.user.email} : {self.query}"

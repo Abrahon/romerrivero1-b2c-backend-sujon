@@ -146,31 +146,38 @@ import cloudinary.uploader
 from rest_framework import serializers
 from .models import ProductCategory
 
+import cloudinary.uploader
+from rest_framework import serializers
+from .models import ProductCategory
+
 class CategorySerializer(serializers.ModelSerializer):
+    icon_url = serializers.SerializerMethodField()
     class Meta:
         model = ProductCategory
-        fields = ["id", "name", "icon"]
+        fields = ["id", "name", "icon","icon_url"]
     
-    def get_icon(self, obj):
+    def get_icon_url(self, obj):
         if obj.icon:
-            return obj.icon.url  # ✅ Full Cloudinary URL
+            return obj.icon.url
         return None
 
-    def create(self, validated_data):
-        request = self.context.get("request")
-        icon_file = request.FILES.get("icon")  
-        if icon_file:
-            upload_result = cloudinary.uploader.upload(icon_file)
-            validated_data["icon"] = upload_result.get("secure_url")
-        return super().create(validated_data)
+    # def create(self, validated_data):
+    #     request = self.context.get("request")
+    #     icon_file = request.FILES.get("icon")  
+    #     if icon_file:
+    #         # Upload to Cloudinary and get the secure URL
+    #         upload_result = cloudinary.uploader.upload(icon_file)
+    #         validated_data["icon"] = upload_result.get("secure_url")  # use secure_url directly
+    #     return super().create(validated_data)
 
-    def update(self, instance, validated_data):
-        request = self.context.get("request")
-        icon_file = request.FILES.get("icon")  # Allow updating icon
-        if icon_file:
-            upload_result = cloudinary.uploader.upload(icon_file)
-            validated_data["icon"] = upload_result.get("secure_url")
-        return super().update(instance, validated_data)
+    # def update(self, instance, validated_data):
+    #     request = self.context.get("request")
+    #     icon_file = request.FILES.get("icon")
+    #     if icon_file:
+    #         upload_result = cloudinary.uploader.upload(icon_file)
+    #         validated_data["icon"] = upload_result.get("secure_url")  
+    #     return super().update(instance, validated_data)
+
 
 
 
@@ -184,6 +191,13 @@ class ProductSerializer(serializers.ModelSerializer):
         child=serializers.ImageField(), write_only=True, required=False
     )
     discounted_price = serializers.SerializerMethodField(read_only=True)
+    # main_images = ImagesField(null)
+    image = serializers.SerializerMethodField() 
+    average_rating = serializers.DecimalField(
+        max_digits=3, decimal_places=1, read_only=True
+    )
+    
+    
 
     # -------------------------------
     # Limited Deal Fields
@@ -214,9 +228,22 @@ class ProductSerializer(serializers.ModelSerializer):
             "limited_deal_price",
             "limited_deal_start",
             "limited_deal_end",
+            "image",
+            "average_rating"
+          
+            
         ]
-        read_only_fields = ["id", "product_code", "images", "discounted_price"]
-
+        read_only_fields = ["id", "product_code", "images", "discounted_price","product_name","average_rating"]
+    
+    
+    
+    def get_image(self, obj):
+        try:
+            if obj.images and len(obj.images) > 0:
+                return obj.images[0] 
+        except Exception:
+            return None
+        return None
     # ----------------------
     # Helpers
     # ----------------------

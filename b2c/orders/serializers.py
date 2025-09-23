@@ -22,6 +22,7 @@ from b2c.checkout.models import Shipping
 from b2c.orders.models import Order, OrderItem, OrderTracking
 from notifications.models import Notification
 from django.contrib.auth import get_user_model
+from .enums import  PaymentMethodChoices
 
 
 User = get_user_model()
@@ -38,8 +39,11 @@ class OrderItemSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "product_name", "line_total"]
 
 
+
+
+
 class OrderTrackingSerializer(serializers.ModelSerializer):
-    updated_by = serializers.StringRelatedField(read_only=True)
+    updated_by = serializers.StringRelatedField(read_only=True)  
 
     class Meta:
         model = OrderTracking
@@ -47,13 +51,21 @@ class OrderTrackingSerializer(serializers.ModelSerializer):
         read_only_fields = ['updated_by', 'created_at']
 
     def create(self, validated_data):
+        # Assign the current user as the updater
         user = self.context['request'].user
         validated_data['updated_by'] = user
+
+        # Create tracking entry
         tracking = OrderTracking.objects.create(**validated_data)
+
+        # Update the order's current status
         order = tracking.order
         order.order_status = tracking.status
         order.save(update_fields=['order_status'])
+
         return tracking
+
+
 
 
 class OrderDetailSerializer(serializers.ModelSerializer):
@@ -170,3 +182,71 @@ class BuyNowSerializer(serializers.Serializer):
             )
 
         return order
+
+
+
+# class BuyNowSerializer(serializers.Serializer):
+#     product_id = serializers.IntegerField()
+#     quantity = serializers.IntegerField(default=1)
+#     payment_method = serializers.ChoiceField(
+#         choices=PaymentMethodChoices.choices 
+#     )
+#     shipping_id = serializers.IntegerField()
+
+#     def validate_product_id(self, value):
+#         try:
+#             Products.objects.get(id=value)
+#         except Products.DoesNotExist:
+#             raise serializers.ValidationError("Product does not exist.")
+#         return value
+
+#     def validate_shipping_id(self, value):
+#         user = self.context['request'].user
+#         if not Shipping.objects.filter(id=value, user=user).exists():
+#             raise serializers.ValidationError("Invalid shipping ID for this user.")
+#         return value
+
+#     @transaction.atomic
+#     def create(self, validated_data):
+#         request = self.context.get("request")
+#         user = request.user
+
+#         # Get product with select_for_update to prevent race conditions
+#         product = Products.objects.select_for_update().get(id=validated_data["product_id"])
+#         quantity = validated_data.get("quantity", 1)
+
+#         if quantity > product.available_stock:
+#             raise serializers.ValidationError(f"Only {product.available_stock} items available.")
+
+#         # Get shipping address
+#         shipping = Shipping.objects.get(id=validated_data["shipping_id"], user=user)
+
+#         # Calculate total amount
+#         total_amount = (
+#             product.discounted_price * quantity
+#             if hasattr(product, "discounted_price") else product.price * quantity
+#         )
+
+#         # Create a new order
+#         order = Order.objects.create(
+#             user=user,
+#             shipping_address=shipping,
+#             total_amount=total_amount,
+#             payment_status="pending" if validated_data["payment_method"] == "ONLINE" else "cod",
+#             order_status="PENDING",
+#             payment_method=validated_data["payment_method"],
+#         )
+
+#         # Create order item
+#         OrderItem.objects.create(
+#             order=order,
+#             product=product,
+#             quantity=quantity,
+#             price=product.discounted_price if hasattr(product, "discounted_price") else product.price,
+#         )
+
+#         # Update product stock
+#         product.available_stock -= quantity
+#         product.save(update_fields=["available_stock"])
+
+#         return order

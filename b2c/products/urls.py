@@ -59,4 +59,6 @@ urlpatterns = [
     path("products/limited-deals/", LimitedDealsProductListView.as_view(), name="limited-deals-products"),
     path('products/filter/', CategoryProductFilterView.as_view(), name='category-product-filter'),
     path('products/search/', ProductSearchFilterView.as_view(), name='product-search-filter'),
+    path('top/products/', TopProductsView.as_view(), name='top-products'),
+    
 ]

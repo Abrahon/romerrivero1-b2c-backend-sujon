@@ -18,3 +18,6 @@ class OrderStatus(models.TextChoices):
 class PaymentMethodChoices(models.TextChoices):
     COD = "COD", "Cash on Delivery"
     ONLINE = "ONLINE", "Online Payment"
+
+
+    

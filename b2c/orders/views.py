@@ -24,7 +24,7 @@ from b2c.orders.serializers import (
     OrderItemSerializer,
     OrderDetailSerializer,
     OrderTrackingSerializer,
-    BuyNowSerializer,  # Added BuyNowSerializer
+    BuyNowSerializer,  
 )
 
 
@@ -127,37 +127,75 @@ class OrderDetailView(generics.RetrieveAPIView):
         return Order.objects.filter(user=self.request.user).prefetch_related("items__product")
 
 
+
+
 class OrderTrackingView(generics.ListAPIView):
     serializer_class = OrderTrackingSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
 
     def get_queryset(self):
         order_identifier = self.kwargs.get("order_identifier")
         user = self.request.user
 
-        order = None
-        if order_identifier.isdigit():
-            order = Order.objects.filter(id=int(order_identifier)).first()
-        else:
-            order = Order.objects.filter(order_number=order_identifier).first()
-
-        if not order or (not user.is_staff and order.user != user):
+        # Fetch the order by id or order_number
+        try:
+            if order_identifier.isdigit():
+                order = Order.objects.get(id=int(order_identifier))
+            else:
+                order = Order.objects.get(order_number=order_identifier)
+        except Order.DoesNotExist:
             return OrderTracking.objects.none()
 
-        return order.tracking_history.all()
+        # Only allow the owner or staff to see tracking
+        if not user.is_staff and order.user != user:
+            return OrderTracking.objects.none()
+
+        # Return all tracking entries for this order
+        return order.tracking_history.all().order_by('created_at')
 
 
-class BuyNowView(APIView):
-    permission_classes = [IsAuthenticated]
 
-    def post(self, request):
-      
-        data = request.data
-        serializer = BuyNowSerializer(data=data, context={'request': request})
+class BuyNowView(generics.CreateAPIView):
+    serializer_class = BuyNowSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         order = serializer.save()
+
+        if order.payment_method == "ONLINE":
+            # Stripe payment is handled by your payment app
+            return Response({
+                "order_id": order.id,
+                "message": "Order created. Please complete payment via Stripe."
+            }, status=status.HTTP_201_CREATED)
+
+        # COD order
         return Response({
-            "message": "Order placed successfully",
             "order_id": order.id,
-            "order_number": order.order_number
+            "message": "Order placed successfully (COD)"
         }, status=status.HTTP_201_CREATED)
+
+
+
+
+class AdminOrderListView(generics.ListAPIView):
+    """
+    Admin view to list all orders with search, filter, and ordering.
+    """
+    serializer_class = OrderDetailSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["order_status", "payment_status", "payment_method", "is_paid"]
+    search_fields = ["order_number", "user__email", "items__product__title"]
+    ordering_fields = ["created_at", "total_amount"]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_staff:
+            return Order.objects.none()  # non-admin cannot access
+        # Use select_related and prefetch_related for performance
+        return Order.objects.select_related("shipping_address", "user") \
+                            .prefetch_related("items__product", "tracking_history") \
+                            .order_by("-created_at")
