@@ -28,7 +28,7 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
 
     def update(self, request, *args, **kwargs):
         try:
-            partial = kwargs.pop('partial', True)  # default to partial update
+            partial = kwargs.pop('partial', True)  
             instance = self.get_object()
             serializer = self.get_serializer(instance, data=request.data, partial=partial)
             serializer.is_valid(raise_exception=True)
@@ -37,6 +37,8 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
         except Exception as e:
             return Response({"detail": f"Error updating profile: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
+
+# TODO: USER PROFILE DELETE API
 
 class AdminUserProfileListView(generics.ListAPIView):
     """

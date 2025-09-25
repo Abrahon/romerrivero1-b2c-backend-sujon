@@ -1,12 +1,7 @@
 from django.urls import path
-from .views import (
-    PromotionListView,
-    PromotionAdminListCreateView,
-    PromotionRetrieveUpdateDeleteView
-)
+from .views import HeroPromotionView, HeroPromotionsView
 
 urlpatterns = [
-    path('list/', PromotionListView.as_view(), name='promotion-list'),
-    path('admin/promotion/', PromotionAdminListCreateView.as_view(), name='promotion-admin-list-create'),
-    path('admin/promotion/<int:id>/', PromotionRetrieveUpdateDeleteView.as_view(), name='promotion-admin-detail'),
+    path("hero-promotion/", HeroPromotionView.as_view(), name="hero-promotion"),
+    path("hero-promotions/", HeroPromotionsView.as_view(), name="hero-promotions"),
 ]

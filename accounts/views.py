@@ -1,5 +1,5 @@
 from django.shortcuts import render
-
+from urllib.parse import urlencode
 # Create your views here.
 from rest_framework import generics, status
 from rest_framework.response import Response
@@ -168,7 +168,7 @@ class AdminCreateView(generics.CreateAPIView):
         return Response({"detail": "Admin user created successfully"},
                         status=status.HTTP_201_CREATED) 
 
-from urllib.parse import urlencode
+
 class GoogleLoginView(APIView):
     permission_classes = [AllowAny]
     def get(self, request):
@@ -183,7 +183,9 @@ class GoogleLoginView(APIView):
         }
         google_auth_url = f"{base_url}?{urlencode(params)}"
         return Response({"auth_url": google_auth_url})
-    
+
+
+ # google login
 class GoogleCallbackView(APIView):
     def get(self, request):
         code = request.GET.get("code")

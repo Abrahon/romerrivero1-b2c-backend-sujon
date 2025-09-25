@@ -31,24 +31,15 @@ class CustomerDetailView(generics.RetrieveAPIView):
     lookup_field = "id"
 
 
-# class CustomerDeleteView(generics.DestroyAPIView):
-#     queryset = User.objects.select_related("user_profile").all()
-#     serializer_class = CustomerSerializer
-#     permission_classes = [permissions.IsAdminUser]
-#     lookup_field = "id"
+class CustomerDeleteView(generics.DestroyAPIView):
+    queryset = User.objects.select_related("user_profile").all()
+    serializer_class = CustomerSerializer
+    permission_classes = [permissions.IsAdminUser]
+    lookup_field = "id"
 
-#     def delete(self, request, *args, **kwargs):
-#         instance = self.get_object()
-#         self.perform_destroy(instance)
-#         return Response({"detail": "Customer deleted successfully."}, status=status.HTTP_200_OK)
-from rest_framework.generics import DestroyAPIView
-from rest_framework.permissions import IsAdminUser
-from django.contrib.auth import get_user_model
+    def delete(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response({"detail": "Customer deleted successfully."}, status=status.HTTP_200_OK)
 
-User = get_user_model()
-
-class CustomerDeleteView(DestroyAPIView):
-    queryset = User.objects.all()
-    permission_classes = [IsAdminUser]
-    lookup_field = 'id'
 

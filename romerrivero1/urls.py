@@ -42,6 +42,7 @@ urlpatterns = [
     path('b2c/api/', include('dashboard.urls')),
     path('b2c/api/', include('visitors.urls')),
     path('b2c/api/', include('b2c.customers.urls')),
+    path('b2c/api/', include('b2c.coupons.urls')),
     
     
 ]

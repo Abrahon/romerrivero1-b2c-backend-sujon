@@ -40,22 +40,50 @@ class MarkMessageReadView(APIView):
         return Response({"status": "marked as read"}, status=status.HTTP_200_OK)
 
 
-# Admin replies to a message
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
 class ReplyMessageView(APIView):
+    """
+    Admin replies to the latest message from a user.
+    POST /api/admin/messages/reply/<user_id>/
+    """
     permission_classes = [IsAdminUser]
 
-    def post(self, request, pk):
-        parent_message = get_object_or_404(Message, id=pk)
-        content = request.data.get('content')
-        if not content:
-            return Response({"error": "Message content is required."}, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request, user_id):
+        # Get the user
+        user = get_object_or_404(User, id=user_id)
 
+        # Get the latest message from this user (ignore receiver field)
+        parent_message = (
+            Message.objects.filter(sender=user)
+            .order_by('-timestamp')  # timestamp field from your model
+            .first()
+        )
+
+        if not parent_message:
+            return Response(
+                {"error": "This user has not sent any messages yet."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Get content from request
+        content = request.data.get("content")
+        if not content or content.strip() == "":
+            return Response(
+                {"error": "Message content is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Create reply message
         reply = Message.objects.create(
-            sender=request.user,
-            receiver=parent_message.sender,
-            content=content,
+            sender=request.user,   # Admin
+            receiver=user,         # Original user
+            content=content.strip(),
             parent=parent_message
         )
+
         serializer = MessageSerializer(reply)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -73,8 +101,6 @@ class DeleteMessageView(APIView):
         return Response({"status": "Message deleted"}, status=status.HTTP_200_OK)
 
 
-
-# Update a message (both sender and receiver can update)
 class UpdateMessageView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 

@@ -7,11 +7,11 @@ User = get_user_model()
 
 
 class CustomerSerializer(serializers.ModelSerializer):
-    name = serializers.CharField(read_only=True)   # from User model directly
+    name = serializers.CharField(read_only=True)   
     profile_image = serializers.ImageField(source="user_profile.profile_image", read_only=True)
     phone_number = serializers.CharField(source="user_profile.phone_number", read_only=True)
     address = serializers.CharField(source="user_profile.address", read_only=True)
-    contact_email = serializers.EmailField(source="user_profile.contact_email", read_only=True)
+    email = serializers.EmailField(read_only=True)
 
     total_spent = serializers.SerializerMethodField()
     cards_number = serializers.SerializerMethodField()
@@ -21,7 +21,7 @@ class CustomerSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",             
-            "contact_email",
+            "email",
             "phone_number",
             "address",
             "profile_image",

@@ -1,32 +1,32 @@
-# b2c/coupons/models.py
 from django.db import models
-from django.utils import timezone
-from decimal import Decimal
+from django.conf import settings
+from django.core.validators import MinValueValidator, MaxValueValidator
+from b2c.products.models import Products,ProductCategory  
 
 class Coupon(models.Model):
     code = models.CharField(max_length=50, unique=True)
-    discount_type = models.CharField(
-        max_length=10,
-        choices=(("percent", "Percent"), ("fixed", "Fixed Amount")),
-        default="percent"
+    description = models.TextField(blank=True, null=True)
+    discount_percentage = models.PositiveIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(100)]
     )
-    discount_value = models.DecimalField(max_digits=10, decimal_places=2)
-    min_order_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
-    usage_limit = models.PositiveIntegerField(default=1)
+    active = models.BooleanField(default=True)
     valid_from = models.DateTimeField()
-    valid_until = models.DateTimeField()
-    usage_limit = models.PositiveIntegerField(default=1)  # total uses allowed
-    used_count = models.PositiveIntegerField(default=0)   # how many times used
-    is_active = models.BooleanField(default=True)
+    valid_to = models.DateTimeField()
+    
+    # Targeting
+    product = models.ForeignKey(Products, on_delete=models.CASCADE, null=True, blank=True)
+    category = models.ForeignKey(ProductCategory, on_delete=models.CASCADE, null=True, blank=True)
 
     def __str__(self):
-        return self.code
+        return f"{self.code} - {self.discount_percentage}%"
 
-    def is_valid(self, order_total: Decimal) -> bool:
-        now = timezone.now()
-        return (
-            self.is_active and
-            self.valid_from <= now <= self.valid_until and
-            self.used_count < self.usage_limit and
-            order_total >= self.min_order_amount
-        )
+class CouponRedemption(models.Model):
+    coupon = models.ForeignKey(Coupon, on_delete=models.CASCADE, related_name="redemptions")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    redeemed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('coupon', 'user')
+
+    def __str__(self):
+        return f"{self.user.email} - {self.coupon.code}"

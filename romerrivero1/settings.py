@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "notifications",
     'accounts',
     'common',
+    # 'promotions',
     'support',
     'b2c.products',
     'b2c.reviews',
@@ -122,6 +123,7 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',    
     'allauth.account.middleware.AccountMiddleware',
     'visitors.middleware.VisitorTrackingMiddleware',
+    
       
 ]
 
@@ -235,6 +237,7 @@ ACCOUNT_LOGOUT_ON_GET = True
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
@@ -248,6 +251,15 @@ REST_FRAMEWORK = {
      'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
 }
 
+# REST_FRAMEWORK = {
+#     'DEFAULT_AUTHENTICATION_CLASSES': [
+#         'rest_framework.authentication.SessionAuthentication',
+#         'rest_framework.authentication.TokenAuthentication',
+#     ],
+#     'DEFAULT_PERMISSION_CLASSES': [
+#         'rest_framework.permissions.IsAuthenticated',
+#     ]
+# }
 
 
 SIMPLE_JWT = {
