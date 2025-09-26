@@ -79,14 +79,14 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         model = Order
         fields = [
             'id', 'order_number', 'user', 'shipping_address',
-            'items', 'tracking_history', 'total_amount', 'discounted_amount',
+            'items', 'tracking_history','coupon', 'total_amount', 'discounted_amount','final_amount',
             'is_paid', 'payment_status', 'order_status',
             'stripe_payment_intent', 'stripe_checkout_session_id', 'created_at'
         ]
         read_only_fields = [
             'user', 'order_number', 'items', 'tracking_history',
             'total_amount', 'discounted_amount', 'is_paid',
-            'payment_status', 'order_status', 'stripe_payment_intent',
+            'payment_status', 'order_status', 'final_amount','stripe_payment_intent',
             'stripe_checkout_session_id', 'created_at'
         ]
 

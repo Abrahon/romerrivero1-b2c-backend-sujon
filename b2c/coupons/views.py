@@ -1,33 +1,42 @@
 
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, serializers
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from .models import Coupon, CouponRedemption
 from .serializers import CouponSerializer, ApplyCouponSerializer
+from rest_framework import generics, permissions, status
+from rest_framework.response import Response
+from decimal import Decimal
+from .serializers import ApplyCouponSerializer
 from b2c.products.models import Products
 
-# ------------------------------
-# Admin: List and Create Coupons
-# ------------------------------
+# ---------------- Admin Coupon Management ----------------
 class CouponListCreateView(generics.ListCreateAPIView):
     queryset = Coupon.objects.all()
     serializer_class = CouponSerializer
     permission_classes = [permissions.IsAdminUser]
 
+    def perform_create(self, serializer):
+        # Ensure only one coupon per product/category exists
+        product = serializer.validated_data.get('product')
+        category = serializer.validated_data.get('category')
 
-# ------------------------------
-# Admin: Retrieve, Update, Delete
-# ------------------------------
-class CouponRetrieveUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
+        if product and Coupon.objects.filter(product=product).exists():
+            raise serializers.ValidationError(f"Coupon for product {product.title} already exists.")
+        if category and Coupon.objects.filter(category=category).exists():
+            raise serializers.ValidationError(f"Coupon for category {category.name} already exists.")
+
+        serializer.save()
+
+
+class CouponRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Coupon.objects.all()
     serializer_class = CouponSerializer
     permission_classes = [permissions.IsAdminUser]
-    lookup_field = 'id'
+    lookup_field = "id"
 
 
-# ------------------------------
-# User: Apply Coupon
-# ------------------------------
+
 class ApplyCouponView(generics.GenericAPIView):
     serializer_class = ApplyCouponSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -35,38 +44,29 @@ class ApplyCouponView(generics.GenericAPIView):
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        code = serializer.validated_data['code']
+        coupon = serializer.validated_data['coupon']
         product_id = serializer.validated_data.get('product_id')
 
-        coupon = get_object_or_404(Coupon, code=code, active=True)
+        # Fetch product price automatically
+        if product_id:
+            try:
+                product = Products.objects.get(id=product_id)
+            except Products.DoesNotExist:
+                return Response({"error": "Product does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+            total_amount = product.price
+        else:
+            return Response({"error": "Product ID is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check redemption
-        if CouponRedemption.objects.filter(coupon=coupon, user=request.user).exists():
-            return Response(
-                {"error": "You have already used this coupon."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        # Calculate discount
+        discount_amount = (total_amount * Decimal(coupon.discount_percentage)) / Decimal("100")
+        final_amount = total_amount - discount_amount
 
-        # Check product eligibility
-        if coupon.product and coupon.product.id != product_id:
-            return Response(
-                {"error": "This coupon is not valid for this product."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Check category eligibility
-        if coupon.category and product_id:
-            product = get_object_or_404(Product, id=product_id)
-            if product.category != coupon.category:
-                return Response(
-                    {"error": "This coupon is not valid for this category."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-        # Redeem coupon
-        CouponRedemption.objects.create(coupon=coupon, user=request.user)
+        # Record redemption
+        CouponRedemption.objects.get_or_create(coupon=coupon, user=request.user)
 
         return Response({
-            "message": f"Coupon applied successfully! {coupon.discount_percentage}% discount.",
-            "coupon": CouponSerializer(coupon).data
+            "message": f"Coupon applied successfully! you get {coupon.discount_percentage}% discount.",
+            "discount_percentage": coupon.discount_percentage,
+            "discounted_amount": str(discount_amount),
+            "final_amount": str(final_amount),
         }, status=status.HTTP_200_OK)

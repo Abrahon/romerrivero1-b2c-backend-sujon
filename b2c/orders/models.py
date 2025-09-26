@@ -6,17 +6,20 @@ from django.utils import timezone
 from decimal import Decimal
 import secrets
 from common.models import TimeStampedModel
-from .enums import OrderStatus, PaymentMethodChoices
+from .enums import OrderStatus, PaymentMethodChoices,PaymentStatus
+from b2c.coupons.models import Coupon
 
 class Order(TimeStampedModel):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="orders")
     payment_method = models.CharField(max_length=20, choices=PaymentMethodChoices.choices, default=PaymentMethodChoices.COD)
     order_number = models.CharField(max_length=255, unique=True, editable=False)
     shipping_address = models.ForeignKey("checkout.Shipping", on_delete=models.SET_NULL, null=True, related_name='orders')
+    coupon = models.ForeignKey(Coupon, null=True, blank=True, on_delete=models.SET_NULL)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     discounted_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    final_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     is_paid = models.BooleanField(default=False)
-    payment_status = models.CharField(max_length=20, default="pending")
+    payment_status = models.CharField(max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.PENDING)
     order_status = models.CharField(max_length=20, choices=OrderStatus.choices, default=OrderStatus.PENDING)
     stripe_payment_intent = models.CharField(max_length=255, blank=True, null=True)
     stripe_checkout_session_id = models.CharField(max_length=255, blank=True, null=True)
@@ -33,6 +36,21 @@ class Order(TimeStampedModel):
             self.order_number = f"ORD-{ts}-{rnd}"
         super().save(*args, **kwargs)
 
+    def calculate_totals(self):
+        """Recalculate totals from items + coupon"""
+        subtotal = sum(item.line_total for item in self.items.all())
+        self.total_amount = subtotal
+
+        if self.coupon:
+            discount = (subtotal * self.coupon.discount_percentage) / Decimal("100.0")
+            self.discount_amount = discount
+            self.final_amount = subtotal - discount
+        else:
+            self.discount_amount = Decimal("0.00")
+            self.final_amount = subtotal
+        return self.final_amount
+
+    
 
 class OrderItem(models.Model):
     order = models.ForeignKey("orders.Order", related_name="items", on_delete=models.CASCADE)
