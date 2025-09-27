@@ -10,7 +10,7 @@ from django.db.models import Q
 from django.utils import timezone
 from rest_framework import permissions, status
 from django.db.models import Q, Avg
-
+from rest_framework.pagination import PageNumberPagination
 
 from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
@@ -34,7 +34,7 @@ from django.db.models import Avg, DecimalField
 from django.db.models.functions import Coalesce
 from rest_framework import generics, permissions
 from rest_framework.exceptions import ValidationError
-
+from rest_framework.pagination import PageNumberPagination
 
 logger = logging.getLogger(__name__)
 
@@ -236,7 +236,7 @@ class UserCategoryListView(generics.ListAPIView):
     queryset = ProductCategory.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [AllowAny] 
-    pagination_class = None  # ✅ ei jagay hobe
+    pagination_class = None 
 
 
 
@@ -283,11 +283,25 @@ class TopProductsView(generics.ListAPIView):
 # Limited Deals Products View
 # ------------------------
 
+class LimitedDealsPagination(PageNumberPagination):
+    page_size = 8 
+    page_size_query_param = 'page_size' 
+    max_page_size = 50
+
+    def get_paginated_response(self, data):
+        return Response({
+            "count": self.page.paginator.count,
+            "total_pages": self.page.paginator.num_pages,
+            "next": self.get_next_link(),
+            "previous": self.get_previous_link(),
+            "results": data
+        })
 
 
 class LimitedDealsProductListView(generics.ListAPIView):
     serializer_class = ProductSerializer
     permission_classes = [AllowAny]
+    pagination_class = LimitedDealsPagination
 
     def get_queryset(self):
         now = timezone.now()
@@ -295,24 +309,43 @@ class LimitedDealsProductListView(generics.ListAPIView):
             limited_deal_price__isnull=False,
             limited_deal_start__lte=now,
             limited_deal_end__gte=now,
-            status="active"  
+            status="active"
         ).order_by("-limited_deal_end")
 
 
 
+
 class UserProductListView(generics.ListAPIView):
-    queryset = Products.objects.filter(status=ProductStatus.ACTIVE)
     serializer_class = ProductSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [permissions.AllowAny]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['category']
+
+    def get_queryset(self):
+        # Annotate each product with average_rating
+        return (
+            Products.objects.filter(status=ProductStatus.ACTIVE)
+            .annotate(average_rating=Avg('reviews__rating')) 
+        )
+
+
+
+# Route 2: Load More (show all products, no pagination)
+class UserProductLoadMoreView(generics.ListAPIView):
+    queryset = Products.objects.filter(status=ProductStatus.ACTIVE)
+    serializer_class = ProductSerializer
+    permission_classes = [permissions.AllowAny]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['category']
+    # disable pagination
+    pagination_class = None
 
 
 class UserProductDetailView(generics.RetrieveAPIView):
     queryset = Products.objects.filter(status=ProductStatus.ACTIVE)
     serializer_class = ProductSerializer
     permission_classes = [AllowAny]
-    lookup_field = "id"
+    lookup_field = "id"    
     lookup_url_kwarg = "id"
 
 

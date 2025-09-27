@@ -13,3 +13,6 @@ class TimeStampedModel(models.Model):
         self.updated_at = timezone.now()
         super().save(*args, **kwargs)
 
+class TimeStampe(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)

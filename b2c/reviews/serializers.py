@@ -5,6 +5,7 @@ from decimal import Decimal
 class ReviewSerializer(serializers.ModelSerializer):
     product = serializers.CharField(source="product.title", read_only=True)
     user = serializers.CharField(source="user.email", read_only=True)
+    name = serializers.CharField(source="user.name", read_only=True)
 
     class Meta:
         model = Review
@@ -17,7 +18,7 @@ class ReviewSerializer(serializers.ModelSerializer):
             "comment",
             "created_at",
         ]
-        read_only_fields = ["id", "product", "user", "created_at"]
+        read_only_fields = ["id", "product", "user", "name", "created_at"]
 
     def validate_rating(self, value):
         if value < 0 or value > 5:

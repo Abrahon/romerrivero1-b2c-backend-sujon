@@ -1,7 +1,6 @@
 
 from django.db import models
 from django.conf import settings
-from .enums import IndustryTypeChoices
 from django.contrib.auth import get_user_model
 from django.db import models
 from cloudinary.models import CloudinaryField
@@ -37,9 +36,11 @@ class CompanyDetails(models.Model):
     company_name = models.CharField(max_length=255)
     industry_type = models.CharField(
         max_length=50,
-        choices=IndustryTypeChoices.choices,
-        default=IndustryTypeChoices.OTHER
+        blank=True,
+        null=True,
+        default=""
     )
+
     company_email = models.EmailField(max_length=55)
     company_phone = models.CharField(max_length=20)
     company_address = models.CharField(max_length=100)

@@ -13,7 +13,7 @@ class Message(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name='received_messages',
-        null=True,  # can be null for admin broadcasts
+        null=True,  
         blank=True
     )
     content = models.TextField()
