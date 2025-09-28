@@ -7,7 +7,12 @@ from .models import Products, ProductCategory
 from django.utils import timezone
 import cloudinary.uploader
 from django.db.models import Avg, Count
-
+import re
+import json
+from rest_framework import serializers
+from cloudinary.uploader import upload
+from .models import Products, ProductCategory
+from django.utils import timezone
 import cloudinary.uploader
 from rest_framework import serializers
 from .models import ProductCategory
@@ -15,6 +20,7 @@ from .models import ProductCategory
 import cloudinary.uploader
 from rest_framework import serializers
 from .models import ProductCategory
+
 
 class CategorySerializer(serializers.ModelSerializer):
     icon_url = serializers.SerializerMethodField()
@@ -29,12 +35,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
 
 
-import re
-import json
-from rest_framework import serializers
-from cloudinary.uploader import upload
-from .models import Products, ProductCategory
-from django.utils import timezone
+
 
 class ProductSerializer(serializers.ModelSerializer):
     category = serializers.PrimaryKeyRelatedField(queryset=ProductCategory.objects.all())

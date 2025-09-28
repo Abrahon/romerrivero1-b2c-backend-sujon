@@ -34,6 +34,7 @@ class Message(models.Model):
         return f"Message from {self.sender.email[:20]}"
 
 
+
 class ChatBot(models.Model):
     user = models.ForeignKey(
         User,

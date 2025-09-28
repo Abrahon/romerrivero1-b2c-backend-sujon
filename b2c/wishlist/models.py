@@ -19,7 +19,7 @@ class WishlistItem(TimeStampedModel):
     added_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('user', 'product')  # Prevent duplicate wishlist items
+        unique_together = ('user', 'product') 
         ordering = ['-added_at']
 
     def __str__(self):

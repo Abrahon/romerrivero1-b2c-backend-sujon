@@ -3,9 +3,11 @@ from .views import (
     OrderListView,
     OrderDetailView,
     PlaceOrderView,
-    OrderTrackingView,
+    # OrderTrackingView,
     BuyNowView,
-    AdminOrderListView
+    AdminOrderListView,
+    OrderTrackingView,
+    OrderTrackingDetailView
 )
 
 urlpatterns = [
@@ -14,6 +16,8 @@ urlpatterns = [
     path("orders/place/", PlaceOrderView.as_view(), name="place-order"),
     path("orders/<str:order_identifier>/track/", OrderTrackingView.as_view(), name="order-tracking"),
     path("orders/buy-now/", BuyNowView.as_view(), name="buy-now"),
+    #  path("orders/tracking/", OrderTrackingView.as_view(), name="tracking-list-create"),
+    path("orders/tracking/<int:pk>/", OrderTrackingDetailView.as_view(), name="tracking-detail"),
 
     path('admin/orders/', AdminOrderListView.as_view(), name='admin-order-list'),
 ]

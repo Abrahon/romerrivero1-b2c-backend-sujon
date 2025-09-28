@@ -149,6 +149,7 @@ PHONE_REGEX = re.compile(r'^\+?\d{7,15}$')
 class UserProfileSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(source="user.name", read_only=True)
     profile_image_url = serializers.SerializerMethodField()
+    # image = serializers.ImageField(read_only=True)
 
     class Meta:
         model = UserProfile

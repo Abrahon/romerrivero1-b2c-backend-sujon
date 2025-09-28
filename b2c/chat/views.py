@@ -162,7 +162,7 @@ from rest_framework import serializers
 from .models import Message, ChatBot
 from .serializers import MessageSerializer, ChatBotSerializer
 from accounts.permissions import IsAdminUser
-from .serializers import MessageSerializer
+from .serializers import MessageSerializer,UserListSerializer
 
 User = get_user_model()
 
@@ -188,8 +188,19 @@ class MessageListView(generics.ListAPIView):
             return Message.objects.all()
         # Normal user: messages where user is sender or receiver
         return Message.objects.filter(sender=user) | Message.objects.filter(receiver=user)
+    
+# user list 
+class UserListView(generics.ListAPIView):
+    serializer_class = UserListSerializer
+    permission_classes = [IsAdminUser]
+    
+    def get_queryset(self):
+        # Return all users except the admin themselves
+        return User.objects.exclude(id=self.request.user.id)
+    
 
 
+    
 # -------------------- Admin sees messages for a specific user --------------------
 class AdminUserMessagesView(generics.ListAPIView):
     serializer_class = MessageSerializer

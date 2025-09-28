@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from .models import WishlistItem
 from .serializers import WishlistItemSerializer
 from b2c.products.models import Products
+from django.shortcuts import get_object_or_404
 
 class WishlistListCreateView(generics.ListCreateAPIView):
     """
@@ -14,17 +15,15 @@ class WishlistListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return WishlistItem.objects.filter(user=self.request.user).select_related('product')
+        # List wishlist items of the logged-in user
+        return WishlistItem.objects.filter(user=self.request.user).select_related('product').order_by('-created_at')
 
     def create(self, request, *args, **kwargs):
         product_id = request.data.get('product')
         if not product_id:
             return Response({"error": "Product ID is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            product = Products.objects.get(id=product_id)
-        except Products.DoesNotExist:
-            return Response({"error": "Product not found."}, status=status.HTTP_404_NOT_FOUND)
+        product = get_object_or_404(Products, id=product_id)
 
         # Check if already in wishlist
         wishlist_item, created = WishlistItem.objects.get_or_create(user=request.user, product=product)

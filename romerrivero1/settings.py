@@ -77,22 +77,29 @@ DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 
 
 
+# DATABASES = {
+#     'default': dj_database_url.config(
+#         # Replace this value with your local database's connection string.
+#         default='postgresql://romero_user:Bg52tJ3BJ3Yh2Nwt2gmfpkJvgqKq6L7x@dpg-d2tmeu8gjchc73a0o8bg-a.oregon-postgres.render.com/romero',
+#         conn_max_age=600
+        
+#     )
+# }
+
+import dj_database_url
+import os
+
 DATABASES = {
     'default': dj_database_url.config(
-        # Replace this value with your local database's connection string.
-        default='postgresql://romero_user:Bg52tJ3BJ3Yh2Nwt2gmfpkJvgqKq6L7x@dpg-d2tmeu8gjchc73a0o8bg-a.oregon-postgres.render.com/romero',
-        conn_max_age=600
+        default=os.getenv(
+            'DATABASE_URL',
+            'postgresql://romero_user:Bg52tJ3BJ3Yh2Nwt2gmfpkJvgqKq6L7x@dpg-d2tmeu8gjchc73a0o8bg-a.oregon-postgres.render.com/romero'
+        ),
+        conn_max_age=600,
+        ssl_require=True  # enforce SSL for production
     )
 }
 
-# CHANNEL_LAYERS = {
-#     "default": {
-#         "BACKEND": "channels_redis.core.RedisChannelLayer",
-#         "CONFIG": {
-#             "hosts": [("127.0.0.1", 6379)],   
-#         },
-#     },
-# }
 
 CHANNEL_LAYERS = {
     "default": {

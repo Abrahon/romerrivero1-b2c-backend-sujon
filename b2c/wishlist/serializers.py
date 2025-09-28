@@ -28,7 +28,7 @@ class WishlistItemSerializer(serializers.ModelSerializer):
         return round(avg, 1) if avg else 0.0
     
 
-    def get_image_url(self, obj):  # <-- matches field name image_url
+    def get_image_url(self, obj):  
         request = self.context.get('request')
         if obj.product.image:
             return request.build_absolute_uri(obj.product.image.url)

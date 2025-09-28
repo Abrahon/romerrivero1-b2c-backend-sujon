@@ -6,6 +6,7 @@ class ReviewSerializer(serializers.ModelSerializer):
     product = serializers.CharField(source="product.title", read_only=True)
     user = serializers.CharField(source="user.email", read_only=True)
     name = serializers.CharField(source="user.name", read_only=True)
+    user_image = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Review
@@ -15,10 +16,17 @@ class ReviewSerializer(serializers.ModelSerializer):
             "user",
             "name",
             "rating",
+            "user_image",
             "comment",
             "created_at",
         ]
-        read_only_fields = ["id", "product", "user", "name", "created_at"]
+        read_only_fields = ["id", "product", "user", "name", "user_image", "created_at"]
+
+    def get_user_image(self, obj):
+        request = self.context.get('request')
+        if obj.user.profile.image and request:
+            return request.build_absolute_uri(obj.user.profile.image.url)
+        return None
 
     def validate_rating(self, value):
         if value < 0 or value > 5:

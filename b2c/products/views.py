@@ -6,35 +6,26 @@ import requests
 from django.utils.text import slugify
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
-from django.db.models import Q
 from django.utils import timezone
 from rest_framework import permissions, status
 from django.db.models import Q, Avg
 from rest_framework.pagination import PageNumberPagination
-
 from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
-
 from .models import Products, ProductCategory
 from .serializers import ProductSerializer, CategorySerializer
 from .enums import ProductStatus
-
 from rest_framework.permissions import AllowAny
 # b2c/products/views.py
 from rest_framework import generics
-from rest_framework.permissions import AllowAny
-from .models import Products
 from django.utils import timezone
-from django.db.models import Q
 from django.db.models import Avg, DecimalField
 from django.db.models.functions import Coalesce
-from rest_framework import generics, permissions
 from rest_framework.exceptions import ValidationError
-from rest_framework.pagination import PageNumberPagination
+
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +46,7 @@ class AdminCategoryListCreateView(generics.ListCreateAPIView):
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
             return Response({
-                "message": "✅ Category created successfully!",
+                "message": " Category created successfully!",
                 "category": serializer.data
             }, status=status.HTTP_201_CREATED)
         except Exception as e:
@@ -77,7 +68,7 @@ class AdminCategoryRetrieveUpdateDeleteView(generics.RetrieveUpdateDestroyAPIVie
         try:
             response = super().update(request, *args, **kwargs)
             return Response({
-                "message": "✅ Category updated successfully!",
+                "message": "Category updated successfully!",
                 "category": response.data
             }, status=status.HTTP_200_OK)
         except Exception as e:
@@ -153,7 +144,7 @@ class AdminProductListCreateView(generics.ListCreateAPIView):
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
             return Response({
-                "message": "✅ Product added successfully!",
+                "message": "Product added successfully!",
                 "product": serializer.data
             }, status=status.HTTP_201_CREATED)
 
@@ -174,7 +165,7 @@ class AdminProductRetrieveUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView
         try:
             response = super().update(request, *args, **kwargs)
             return Response({
-                "message": "✅ Product updated successfully!",
+                "message": "Product updated successfully!",
                 "product": response.data
             }, status=status.HTTP_200_OK)
         except Exception as e:
@@ -421,8 +412,82 @@ class CategoryProductFilterView(generics.ListAPIView):
 # ===== PRODUCT SEARCH/UPLOAD CSV =====
 # -------------------------
 
+# class ProductSearchFilterView(APIView):
+#     permission_classes = [permissions.AllowAny]
+
+#     def get(self, request):
+#         query = request.query_params.get("q")
+#         category_param = request.query_params.get("category")
+#         min_price = request.query_params.get("min_price")
+#         max_price = request.query_params.get("max_price")
+#         price_sort = request.query_params.get("price_sort")
+#         name_sort = request.query_params.get("name_sort")
+#         min_rating = request.query_params.get("min_rating")
+#         max_rating = request.query_params.get("max_rating")
+
+#         # Annotate products with average rating
+#         products = Products.objects.all().annotate(average_rating=Avg("reviews__rating"))
+
+#         # Search by title or description
+#         if query:
+#             products = products.filter(Q(title__icontains=query) | Q(description__icontains=query))
+
+#         # Filter by category (id or name)
+#         if category_param:
+#             if category_param.isdigit():
+#                 products = products.filter(category__id=int(category_param))
+#             else:
+#                 products = products.filter(category__name__icontains=category_param)
+
+#         # Price filters
+#         if min_price:
+#             try:
+#                 products = products.filter(price__gte=float(min_price))
+#             except ValueError:
+#                 return Response({"error": "Invalid min_price"}, status=status.HTTP_400_BAD_REQUEST)
+
+#         if max_price:
+#             try:
+#                 products = products.filter(price__lte=float(max_price))
+#             except ValueError:
+#                 return Response({"error": "Invalid max_price"}, status=status.HTTP_400_BAD_REQUEST)
+
+#         # Rating filters
+#         if min_rating:
+#             try:
+#                 products = products.filter(average_rating__gte=float(min_rating))
+#             except ValueError:
+#                 return Response({"error": "Invalid min_rating"}, status=status.HTTP_400_BAD_REQUEST)
+
+#         if max_rating:
+#             try:
+#                 products = products.filter(average_rating__lte=float(max_rating))
+#             except ValueError:
+#                 return Response({"error": "Invalid max_rating"}, status=status.HTTP_400_BAD_REQUEST)
+
+#         # Sorting
+#         if price_sort:
+#             products = products.order_by("price" if price_sort.lower() == "asc" else "-price")
+#         if name_sort:
+#             products = products.order_by("title" if name_sort.lower() == "asc" else "-title")
+
+#         # if not products.exists():
+#         #     return Response({"error": "No products found."}, status=status.HTTP_404_NOT_FOUND)
+#         serializer = ProductSerializer(products, many=True, context={"request": request})
+#         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+
+#         serializer = ProductSerializer(products, many=True, context={"request": request})
+#         return Response(serializer.data, status=status.HTTP_200_OK)
+from django.db.models import Q, Avg, Value
+from django.db.models.functions import Coalesce
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status, permissions
+from .models import Products
+from .serializers import ProductSerializer
+from django.db.models import Avg, FloatField
 
 class ProductSearchFilterView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -436,22 +501,28 @@ class ProductSearchFilterView(APIView):
         name_sort = request.query_params.get("name_sort")
         min_rating = request.query_params.get("min_rating")
         max_rating = request.query_params.get("max_rating")
+        products = Products.objects.all().annotate(
+       average_rating=Avg("reviews__rating", output_field=FloatField())
+      )
 
-        # Annotate products with average rating
-        products = Products.objects.all().annotate(average_rating=Avg("reviews__rating"))
+        products = Products.objects.all().annotate(
+    average_rating=Coalesce(Avg("reviews__rating", output_field=FloatField()), Value(0.0), output_field=FloatField())
+)
 
-        # Search by title or description
+        # 🔎 Search by title or description
         if query:
-            products = products.filter(Q(title__icontains=query) | Q(description__icontains=query))
+            products = products.filter(
+                Q(title__icontains=query) | Q(description__icontains=query)
+            )
 
-        # Filter by category (id or name)
+        # 📂 Category filter (id or name)
         if category_param:
             if category_param.isdigit():
                 products = products.filter(category__id=int(category_param))
             else:
                 products = products.filter(category__name__icontains=category_param)
 
-        # Price filters
+        # 💰 Price filters
         if min_price:
             try:
                 products = products.filter(price__gte=float(min_price))
@@ -464,41 +535,157 @@ class ProductSearchFilterView(APIView):
             except ValueError:
                 return Response({"error": "Invalid max_price"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Rating filters
-        if min_rating:
-            try:
-                products = products.filter(average_rating__gte=float(min_rating))
-            except ValueError:
-                return Response({"error": "Invalid min_rating"}, status=status.HTTP_400_BAD_REQUEST)
+        # ⭐ Rating filters
+        try:
+            if min_rating:
+                min_rating_val = float(min_rating)
+                products = products.filter(average_rating__gte=min_rating_val)
 
-        if max_rating:
-            try:
-                products = products.filter(average_rating__lte=float(max_rating))
-            except ValueError:
-                return Response({"error": "Invalid max_rating"}, status=status.HTTP_400_BAD_REQUEST)
+                # Exclude unrated if looking for 1+ rating
+                if min_rating_val > 0:
+                    products = products.exclude(average_rating=0.0)
 
-        # Sorting
+            if max_rating:
+                max_rating_val = float(max_rating)
+                products = products.filter(average_rating__lte=max_rating_val)
+        except ValueError:
+            return Response({"error": "Invalid rating filter"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # ↕ Sorting
         if price_sort:
             products = products.order_by("price" if price_sort.lower() == "asc" else "-price")
-        if name_sort:
+        elif name_sort:
             products = products.order_by("title" if name_sort.lower() == "asc" else "-title")
+        else:
+            products = products.order_by("-id")  # default newest first
 
-        if not products.exists():
-            return Response({"error": "No products found."}, status=status.HTTP_404_NOT_FOUND)
-
+        # ✅ Serialize results
         serializer = ProductSerializer(products, many=True, context={"request": request})
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response({
+            "count": products.count(),
+            "results": serializer.data
+        }, status=status.HTTP_200_OK)
 
+
+# class BulkUploadProductView(APIView):
+#     permission_classes = [permissions.IsAdminUser]
+#     parser_classes = [MultiPartParser, FormParser]
+
+#     def post(self, request):
+#         if 'file' not in request.FILES:
+#             return Response({"detail": "No file provided."}, status=status.HTTP_400_BAD_REQUEST)
+
+#         file = request.FILES['file']
+#         print("FILES:", request.FILES)
+
+
+#         try:
+#             file_data = file.read().decode('utf-8').splitlines()
+#             reader = csv.DictReader(file_data)
+#         except Exception as e:
+#             logger.error(f"CSV read error: {str(e)}")
+#             return Response({"detail": f"Error reading CSV: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+#         created_products = []
+#         failed_rows = []
+
+#         for row in reader:
+#             try:
+#                 category_name = row.get('category')
+#                 if not category_name:
+#                     raise ValueError("Category is missing.")
+#                 category, _ = ProductCategory.objects.get_or_create(name=category_name)
+
+#                 colors = [c.strip() for c in row.get('colors', '').split(',') if c.strip()]
+#                 image_paths = []
+#                 for url in row.get('images', '').split('|'):
+#                     url = url.strip()
+#                     if not url:
+#                         continue
+#                     try:
+#                         response = requests.get(url, timeout=5)
+#                         response.raise_for_status()
+#                         ext = url.split('.')[-1]
+#                         seo_name = f"{slugify(row['title'])}-{uuid.uuid4().hex}.{ext}"
+#                         full_path = f'product_images/{seo_name}'
+#                         default_storage.save(full_path, ContentFile(response.content))
+#                         image_paths.append(full_path)
+#                     except Exception as e:
+#                         logger.warning(f"Failed to download image {url}: {str(e)}")
+
+#                 product_data = {
+#                     'title': row.get('title'),
+#                     'product_code': row.get('product_code', ''),
+#                     'category': category.id,
+#                     'colors': colors,
+#                     'available_stock': row.get('available_stock', 0),
+#                     'price': row.get('price', 0),
+#                     'description': row.get('description', ''),
+#                     'images': image_paths
+#                 }
+
+#                 serializer = ProductSerializer(data=product_data)
+#                 if serializer.is_valid():
+#                     serializer.save()
+#                     created_products.append(serializer.data)
+#                 else:
+#                     failed_rows.append({"row": row, "errors": serializer.errors})
+
+#             except Exception as e:
+#                 failed_rows.append({"row": row, "errors": str(e)})
+#                 logger.error(f"Error processing row {row}: {str(e)}")
+
+#         return Response({
+#             "created_products": created_products,
+#             "failed_rows": failed_rows
+#         }, status=status.HTTP_201_CREATED)
+
+#     def delete(self, request):
+#         ids = request.data.get("ids", [])
+#         if not ids:
+#             return Response({"error": "No product IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
+#         products = Products.objects.filter(id__in=ids)
+#         deleted_count = products.count()
+#         for product in products:
+#             if product.images:
+#                 for path in product.images:
+#                     try:
+#                         default_storage.delete(path)
+#                     except Exception as e:
+#                         logger.warning(f"Failed to delete image {path}: {str(e)}")
+#         products.delete()
+#         return Response({"message": f"{deleted_count} products deleted successfully"}, status=status.HTTP_200_OK)
+import csv
+import uuid
+import requests
+import logging
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+from django.utils.text import slugify
+from rest_framework import status, permissions, generics
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from b2c.products.models import Products, ProductCategory
+from b2c.products.serializers import ProductSerializer
+
+logger = logging.getLogger(__name__)
 
 class BulkUploadProductView(APIView):
     permission_classes = [permissions.IsAdminUser]
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request):
-        if 'file' not in request.FILES:
-            return Response({"detail": "No file provided."}, status=status.HTTP_400_BAD_REQUEST)
+        file = request.FILES.get('file', None)
+        print("file", file)
+        if not file:
+            return Response(
+                {"detail": "No file provided. Make sure the key is 'file' and type is File in Postman."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        file = request.FILES['file']
+        print("Received FILES:", request.FILES)  # Debug: check file received
+
         try:
             file_data = file.read().decode('utf-8').splitlines()
             reader = csv.DictReader(file_data)
@@ -518,6 +705,7 @@ class BulkUploadProductView(APIView):
 
                 colors = [c.strip() for c in row.get('colors', '').split(',') if c.strip()]
                 image_paths = []
+
                 for url in row.get('images', '').split('|'):
                     url = url.strip()
                     if not url:
@@ -525,7 +713,7 @@ class BulkUploadProductView(APIView):
                     try:
                         response = requests.get(url, timeout=5)
                         response.raise_for_status()
-                        ext = url.split('.')[-1]
+                        ext = url.split('.')[-1].split('?')[0]  # remove query params if any
                         seo_name = f"{slugify(row['title'])}-{uuid.uuid4().hex}.{ext}"
                         full_path = f'product_images/{seo_name}'
                         default_storage.save(full_path, ContentFile(response.content))
@@ -538,8 +726,8 @@ class BulkUploadProductView(APIView):
                     'product_code': row.get('product_code', ''),
                     'category': category.id,
                     'colors': colors,
-                    'available_stock': row.get('available_stock', 0),
-                    'price': row.get('price', 0),
+                    'available_stock': int(row.get('available_stock', 0)),
+                    'price': float(row.get('price', 0)),
                     'description': row.get('description', ''),
                     'images': image_paths
                 }
@@ -564,8 +752,10 @@ class BulkUploadProductView(APIView):
         ids = request.data.get("ids", [])
         if not ids:
             return Response({"error": "No product IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
+
         products = Products.objects.filter(id__in=ids)
         deleted_count = products.count()
+
         for product in products:
             if product.images:
                 for path in product.images:
@@ -573,5 +763,6 @@ class BulkUploadProductView(APIView):
                         default_storage.delete(path)
                     except Exception as e:
                         logger.warning(f"Failed to delete image {path}: {str(e)}")
+
         products.delete()
         return Response({"message": f"{deleted_count} products deleted successfully"}, status=status.HTTP_200_OK)

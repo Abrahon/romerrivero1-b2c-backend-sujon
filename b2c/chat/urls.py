@@ -43,7 +43,7 @@ from django.urls import path
 from .views import (
     SendMessageView, MessageListView, AdminUserMessagesView, AdminSendMessageView,
     MarkMessageReadView, DeleteMessageView, UpdateMessageView,
-    ChatBotList, ChatBotCreateView
+    ChatBotList, ChatBotCreateView,UserListView
 )
 
 urlpatterns = [
@@ -54,6 +54,7 @@ urlpatterns = [
     path('messages/<int:pk>/update/', UpdateMessageView.as_view(), name='update_message'),
 
     # Admin
+     path('admin/users/list/', UserListView.as_view(), name='user_list'),
     path('admin/messages/<int:user_id>/', AdminUserMessagesView.as_view(), name='admin_user_messages'),
     path('admin/messages/send/', AdminSendMessageView.as_view(), name='admin_send_message'),
     path('admin/messages/<int:pk>/read/', MarkMessageReadView.as_view(), name='mark_read'),
