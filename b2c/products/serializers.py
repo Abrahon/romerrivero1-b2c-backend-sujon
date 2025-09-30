@@ -60,10 +60,10 @@ class ProductSerializer(serializers.ModelSerializer):
             "id", "title", "product_code", "category", "category_detail",
             "colors", "available_stock", "price", "discount", "discounted_price",
             "description", "images", "images_upload", "images_delete", "status",
-            "limited_deal_price", "limited_deal_start", "limited_deal_end",
+            "limited_deal_price", "limited_deal_start","in_wishlist","limited_deal_end",
             "image", "average_rating"
         ]
-        read_only_fields = ["id", "product_code", "images", "discounted_price", "average_rating"]
+        read_only_fields = ["id", "product_code", "images", "in_wishlist", "discounted_price", "average_rating"]
     
     def get_image(self, obj):
         try:
