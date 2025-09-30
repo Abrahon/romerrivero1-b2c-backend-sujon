@@ -23,10 +23,14 @@ class ReviewSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "product", "user", "name", "user_image", "created_at"]
 
     def get_user_image(self, obj):
-        request = self.context.get('request')
-        if obj.user.profile.image and request:
-            return request.build_absolute_uri(obj.user.profile.image.url)
+        request = self.context.get("request")
+
+        profile = getattr(obj.user, "profile", None)
+        if profile and profile.image and request:
+            return request.build_absolute_uri(profile.image.url)
+
         return None
+
 
     def validate_rating(self, value):
         if value < 0 or value > 5:

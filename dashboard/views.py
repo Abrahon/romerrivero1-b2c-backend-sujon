@@ -1,7 +1,6 @@
 from django.db.models import Sum, Count
 from django.db.models.functions import TruncWeek, TruncMonth, TruncYear
 from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework import status, permissions
 from datetime import datetime, timedelta
 from b2c.orders.models import Order, OrderItem
@@ -10,7 +9,6 @@ from b2c.products.models import Products
 from visitors.models import Visitor
 from datetime import timedelta
 from django.utils.timezone import now
-from rest_framework.views import APIView
 from accounts. models import User
 from rest_framework import status
 from django.db.models import Count, Sum, F
@@ -21,7 +19,6 @@ from rest_framework import status
 from django.db.models import Count, Sum
 from django.utils.timezone import now
 from datetime import timedelta, date
-from collections import Counter
 import phonenumbers
 from django.contrib.auth import get_user_model
 
@@ -33,8 +30,19 @@ from b2c.user_profile.models import UserProfile
 
 # from b2c.sales.models import Sale  
 
+from datetime import datetime, timedelta
+from django.db.models import Sum, Count
+from django.db.models.functions import TruncWeek, TruncMonth, TruncYear
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import permissions, status
+
+from b2c.orders.models import Order, OrderItem
+from decimal import Decimal
+
+
 class DashboardOverview(APIView):
-    permission_classes = [permissions.IsAdminUser]  # Only admin can access
+    permission_classes = [permissions.IsAdminUser]
 
     def get(self, request):
         try:
@@ -45,40 +53,98 @@ class DashboardOverview(APIView):
             orders = Order.objects.all()
             order_items = OrderItem.objects.select_related("product").all()
 
-            # Total calculations
-            total_income = orders.aggregate(total=Sum("total_amount"))["total"] or 0
-            total_orders = orders.count()
+            # Totals
+            total_income = orders.aggregate(total=Sum("total_amount"))["total"] or Decimal("0.00")
             total_sales = order_items.count()
-            orders_completed = orders.filter(order_status="DELIVERED").count()
+            total_new_customers = User.objects.filter(is_staff=False).count()
+            total_orders_completed = orders.filter(order_status="DELIVERED").count()
 
-            # Determine time filter and annotation function
+            # Select truncate function + interval
             if period == "weekly":
-                start_date = now - timedelta(days=7)
                 truncate_func = TruncWeek
+                interval = timedelta(weeks=1)
+                periods = 10
             elif period == "monthly":
-                start_date = now - timedelta(days=30)
                 truncate_func = TruncMonth
+                interval = timedelta(days=30)
+                periods = 10
             elif period == "yearly":
-                start_date = now - timedelta(days=365)
                 truncate_func = TruncYear
+                interval = timedelta(days=365)
+                periods = 10
             else:
-                return Response({"error": "Invalid period. Use weekly, monthly, or yearly."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": "Invalid period. Use weekly, monthly, or yearly."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-            # Filtered revenue
-            revenue_queryset = orders.filter(created_at__gte=start_date).annotate(period=truncate_func("created_at"))
-            revenue_data = (
-                revenue_queryset
+            # Revenue from DB (grouped)
+            db_data = (
+                orders.filter(created_at__lte=now)
+                .annotate(period=truncate_func("created_at"))
                 .values("period")
                 .annotate(total_revenue=Sum("total_amount"))
                 .order_by("period")
             )
+            revenue_map = {
+                (d["period"].date() if hasattr(d["period"], "date") else d["period"]): d["total_revenue"]
+                for d in db_data
+            }
 
-            # Filtered recent reviews
-            recent_reviews = Review.objects.filter(created_at__gte=start_date).order_by("-created_at")[:5].values(
+            # Completed orders from DB (grouped)
+            completed_data = (
+                orders.filter(order_status="DELIVERED", created_at__lte=now)
+                .annotate(period=truncate_func("created_at"))
+                .values("period")
+                .annotate(completed_orders=Count("id"))
+                .order_by("period")
+            )
+            completed_map = {
+                (d["period"].date() if hasattr(d["period"], "date") else d["period"]): d["completed_orders"]
+                for d in completed_data
+            }
+
+            # Visitors trend
+            visitor_data = (
+                Visitor.objects.filter(last_visit__lte=now)
+                .annotate(period=truncate_func("last_visit"))
+                .values("period")
+                .annotate(visitors_count=Count("id"))
+                .order_by("period")
+            )
+            visitor_map = {
+                (d["period"].date() if hasattr(d["period"], "date") else d["period"]): d["visitors_count"]
+                for d in visitor_data
+            }
+
+            # Build last 10 buckets (fill missing with 0)
+            revenue_trend = []
+            visitors_trend = []
+            for i in range(periods):
+                bucket_start = now - (interval * (periods - i - 1))
+
+                if period == "weekly":
+                    bucket_start = bucket_start - timedelta(days=bucket_start.weekday())
+                elif period == "monthly":
+                    bucket_start = bucket_start.replace(day=1)
+                elif period == "yearly":
+                    bucket_start = bucket_start.replace(month=1, day=1)
+
+                key = bucket_start.date()
+                revenue_trend.append({
+                    "period": bucket_start,
+                    "total_revenue": float(revenue_map.get(key, 0)),
+                    "orders_completed": int(completed_map.get(key, 0)),
+                })
+                visitors_trend.append({
+                    "period": bucket_start,
+                    "visitors": int(visitor_map.get(key, 0)),
+                })
+
+            # Recent activity
+            recent_reviews = Review.objects.order_by("-created_at")[:5].values(
                 "id", "product__title", "user__email", "rating", "comment", "created_at"
             )
-
-            # Recent orders (always latest 5)
             recent_orders = orders.order_by("-created_at")[:5].values(
                 "id", "order_number", "user__email", "total_amount", "order_status", "created_at"
             )
@@ -90,29 +156,24 @@ class DashboardOverview(APIView):
                 .order_by("-total_sold")[:5]
             )
 
-            # Visitors today
-            today = now.date()
-            current_visitors = Visitor.objects.filter(last_visit__date=today).count()
-
             response_data = {
-                "total_income": total_income,
+                "total_income": float(total_income),
                 "total_sales": total_sales,
-                "total_orders": total_orders,
-                "orders_completed": orders_completed,
-                "revenue": list(revenue_data),
+                "total_new_customers": total_new_customers,
+                "total_orders_completed": total_orders_completed,
+                "revenue_trend": revenue_trend,
+                "visitors_trend": visitors_trend,
                 "recent_activity": {
                     "recent_orders": list(recent_orders),
                     "recent_reviews": list(recent_reviews),
                 },
                 "best_selling_products": list(best_selling_products),
-                "visitors": current_visitors,
             }
 
             return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
 
 
 

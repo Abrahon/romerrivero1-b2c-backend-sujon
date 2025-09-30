@@ -8,25 +8,23 @@ from .serializers import CartItemSerializer
 
 from rest_framework.parsers import MultiPartParser, FormParser
 
+from rest_framework import generics, permissions
+from .models import CartItem
+from .serializers import CartItemSerializer
+
 class CartItemListCreateView(generics.ListCreateAPIView):
     serializer_class = CartItemSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = None
-    # parser_classes = [MultiPartParser, FormParser] 
 
     def get_queryset(self):
         return CartItem.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        product = serializer.validated_data["product"]
-        user = self.request.user
+        # Just call serializer.save() - create() method handles get_or_create and quantity update
+        serializer.save()
 
-        if CartItem.objects.filter(user=user, product=product).exists():
-            raise ValidationError({
-                "detail": "This product is already in your cart. Please update the quantity instead."
-            })
 
-        serializer.save(user=user)
 
 
 class CartItemUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):

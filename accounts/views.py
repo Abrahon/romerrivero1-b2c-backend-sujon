@@ -178,8 +178,8 @@ class GoogleLoginView(APIView):
             "redirect_uri": settings.GOOGLE_REDIRECT_URI,
             "response_type": "code",
             "scope": "openid email profile",
-            "access_type": "offline",  # optional, for refresh tokens
-            "prompt": "consent",       # optional, forces account selection
+            "access_type": "offline", 
+            "prompt": "consent",      
         }
         google_auth_url = f"{base_url}?{urlencode(params)}"
         return Response({"auth_url": google_auth_url})
@@ -258,5 +258,5 @@ class GoogleExchangeView(APIView):
             headers={"Authorization": f"Bearer {access_token}"}
         ).json()
 
-        # Here: create or get your user in Django, generate JWT/session, etc.
+        
         return Response({"user": user_info})

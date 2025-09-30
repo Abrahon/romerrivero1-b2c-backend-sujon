@@ -23,7 +23,6 @@ class ProductCategory(TimeStampedModel):
         return self.name
 
 
-
 # -------------------------------
 # Helper function for product image path
 # -------------------------------

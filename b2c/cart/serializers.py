@@ -185,7 +185,7 @@ from .models import CartItem
 #         return instance
 from rest_framework import serializers
 from b2c.cart.models import CartItem
-from b2c.products.models import Products  
+from b2c.products.models import Products
 
 class CartItemSerializer(serializers.ModelSerializer):
     product_id = serializers.PrimaryKeyRelatedField(
@@ -223,7 +223,6 @@ class CartItemSerializer(serializers.ModelSerializer):
         return self.get_price(obj) * obj.quantity
 
     def get_image(self, obj):
-        """Return first image if exists."""
         try:
             if obj.product.images and len(obj.product.images) > 0:
                 return obj.product.images[0]
@@ -231,9 +230,6 @@ class CartItemSerializer(serializers.ModelSerializer):
             return None
         return None
 
-    # ----------------------
-    # Quantity validation & CRUD
-    # ----------------------
     def validate_quantity(self, value):
         if value <= 0:
             raise serializers.ValidationError("Quantity must be greater than zero.")
@@ -266,13 +262,5 @@ class CartItemSerializer(serializers.ModelSerializer):
         if not created:
             cart_item.quantity = min(cart_item.quantity + quantity, product.available_stock)
             cart_item.save()
+
         return cart_item
-
-    def update(self, instance, validated_data):
-        quantity = validated_data.get("quantity", instance.quantity)
-        if quantity <= 0:
-            raise serializers.ValidationError({"quantity": "Quantity must be greater than zero."})
-
-        instance.quantity = min(quantity, instance.product.available_stock)
-        instance.save()
-        return instance

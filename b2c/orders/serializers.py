@@ -24,58 +24,35 @@ from notifications.models import Notification
 from django.contrib.auth import get_user_model
 from .enums import  PaymentMethodChoices
 
+from rest_framework import serializers
+from decimal import Decimal
+from django.db import transaction
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from b2c.products.models import Products
+from b2c.checkout.models import Shipping
+from b2c.orders.models import Order, OrderItem
+from b2c.coupons.models import Coupon, CouponRedemption
+from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
 
+from rest_framework import serializers
+from decimal import Decimal
+from .models import OrderItem
 
-# class OrderItemSerializer(serializers.ModelSerializer):
-#     product_name = serializers.CharField(source="product.title", read_only=True)
-#     product_image = serializers.ImageField(source="product.image", read_only=True)
-#     product_name = serializers.CharField(source="product.title", read_only=True)
-#     product_discount = serializers.SerializerMethodField()
-#     coupon_discount = serializers.SerializerMethodField()
-#     final_price = serializers.SerializerMethodField()  
-#     line_total = serializers.SerializerMethodField()
-
-#     class Meta:
-#         model = OrderItem
-#         fields = [
-#             "id", "product", 'product_image',"product_name", "quantity", "price",
-#             "product_discount", "coupon_discount", "final_price", "line_total"
-#         ]
-#         read_only_fields = ["id", "product_name",'product_image', "line_total", "final_price",
-#                             "product_discount", "coupon_discount"]
-
-#     def get_product_discount(self, obj):
-#         return obj.product.discount if obj.product.discount else 0
-
-#     def get_coupon_discount(self, obj):
-#         if obj.coupon:
-#             return obj.coupon.discount_percentage
-#         return 0
-
-#     def get_final_price(self, obj):
-#         # calculate product discounted price
-#         product_price = obj.product.price
-#         if obj.product.discount:
-#             product_price -= product_price * obj.product.discount / 100
-
-#         # apply coupon discount
-#         if obj.coupon:
-#             product_price -= product_price * obj.coupon.discount_percentage / 100
-
-#         return round(product_price, 2)
-
-#     def get_line_total(self, obj):
-#         return round(obj.quantity * self.get_final_price(obj), 2)
+from rest_framework import serializers
+from decimal import Decimal
+from .models import OrderItem
+from b2c.products.serializers import ProductSerializer 
 
 class OrderItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source="product.title", read_only=True)
     product_image = serializers.ImageField(source="product.image", read_only=True)
     product_discount = serializers.SerializerMethodField()
     coupon_discount = serializers.SerializerMethodField()
-    final_price = serializers.SerializerMethodField()  
+    final_price = serializers.SerializerMethodField()
     line_total = serializers.SerializerMethodField()
 
     class Meta:
@@ -85,54 +62,55 @@ class OrderItemSerializer(serializers.ModelSerializer):
             "product_discount", "coupon_discount", "final_price", "line_total"
         ]
         read_only_fields = [
-            "id", "product_name", "product_image", "line_total", 
+            "id", "product_name", "product_image", "line_total",
             "final_price", "product_discount", "coupon_discount"
         ]
+    
+
+    def get_product_image(self, obj):
+        request = self.context.get("request")
+        
+        product = getattr(obj, "product", None)
+        if product and hasattr(product, "image") and product.image and request:
+            return request.build_absolute_uri(product.image.url)
+        
+        # fallback if request is not provided or no image exists
+        if product and hasattr(product, "image") and product.image:
+            return product.image.url
+
+        return None
+
 
     def get_product_discount(self, obj):
-        return obj.product.discount if hasattr(obj.product, "discount") and obj.product.discount else 0
+        return getattr(obj.product, "discount", 0) or 0
 
     def get_coupon_discount(self, obj):
-        """Get coupon discount percentage from related order if available."""
-        if hasattr(obj, "order") and obj.order and getattr(obj.order, "coupon", None):
-            return obj.order.coupon.discount_percentage
+        coupon = getattr(obj.order, "coupon", None)
+        if coupon:
+            return coupon.discount_value
         return 0
 
     def get_final_price(self, obj):
-        """Calculate final price after product + coupon discount."""
-        product_price = obj.product.price
-
-        # Product discount
-        if hasattr(obj.product, "discount") and obj.product.discount:
-            product_price -= product_price * obj.product.discount / 100
-
-        # Coupon discount (via order)
-        if hasattr(obj, "order") and obj.order and getattr(obj.order, "coupon", None):
-            product_price -= product_price * obj.order.coupon.discount_percentage / 100
-
-        return round(product_price, 2)
+        price = Decimal(str(obj.product.discounted_price)) 
+        coupon = getattr(obj.order, "coupon", None)
+        if coupon:
+            if coupon.discount_type == "percentage":
+                price -= price * Decimal(str(coupon.discount_value)) / Decimal("100")
+            else:
+                price -= Decimal(str(coupon.discount_value))
+        return round(max(price, Decimal("0.00")), 2)
 
     def get_line_total(self, obj):
-        """Total for this line item."""
         return round(obj.quantity * self.get_final_price(obj), 2)
 
 
 
 
-class OrderTrackingSerializer(serializers.ModelSerializer):
-    updated_by = serializers.StringRelatedField(read_only=True)
-
-    class Meta:
-        model = OrderTracking
-        fields = ['id', 'order', 'status', 'note', 'updated_by', 'created_at']
-        read_only_fields = ['updated_by', 'created_at']
-
-
-
 class OrderDetailSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
+    # product = ProductSerializer(read_only=True)
     shipping_address = ShippingSerializer(read_only=True)
-    tracking_history = OrderTrackingSerializer(many=True, read_only=True)
+    # tracking_history = OrderTrackingSerializer(many=True, read_only=True)
     total_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     discounted_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     final_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)  # total after coupon
@@ -152,29 +130,98 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             'stripe_checkout_session_id', 'created_at'
         ]
 
+class OrderTrackingSerializer(serializers.ModelSerializer):
+    updated_by = serializers.StringRelatedField(read_only=True)
+    order_items = serializers.SerializerMethodField()
+    shipping_address = serializers.SerializerMethodField()
+    items = OrderItemSerializer(many=True, read_only=True)
+    user_email = serializers.SerializerMethodField()
+
+    class Meta:
+        model = OrderTracking
+        fields = [
+            'id', 'order', 'status', 'note', 'updated_by', 'created_at',
+            'order_items', 'shipping_address', 'user_email','items'
+        ]
+        read_only_fields = ['updated_by', 'created_at','items']
+
+    def get_order_items(self, obj):
+        items = obj.order.items.all()
+        return OrderDetailSerializer(items, many=True).data
+
+    def get_shipping_address(self, obj):
+        shipping = getattr(obj.order, 'shipping_address', None)
+        if shipping:
+            return {
+                "full_name": shipping.full_name,
+                "phone_no": shipping.phone_no,
+                "email": shipping.email,
+                "street_address": shipping.street_address,
+                "apartment": shipping.apartment,
+                "floor": shipping.floor,
+                "city": shipping.city,
+                "zipcode": shipping.zipcode
+            }
+        return None
+
+    def get_user_email(self, obj):
+        return obj.order.user.email if obj.order.user else None
+
+
+from rest_framework import serializers
+from .models import Order, OrderItem
+
+class OrderListSerializer(serializers.ModelSerializer):
+    user_email = serializers.CharField(source="user.email", read_only=True)
+    shipping_address = serializers.CharField(source="shipping_address.address", read_only=True)
+    order_items = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Order
+        fields = [
+            "id",
+            "order_number",
+            "user_email",
+            "order_status",
+            "total_amount",
+            "created_at",
+            "order_items"
+        ]
+
+    def get_order_items(self, obj):
+        items = obj.orderitem_set.all()
+        return [
+            {
+                "product": i.product.title,
+                "quantity": i.quantity,
+                "price": float(i.price)
+            }
+            for i in items
+        ]
+
+
 
 
 
 class BuyNowSerializer(serializers.Serializer):
     product_id = serializers.IntegerField()
     quantity = serializers.IntegerField(default=1)
-    payment_method = serializers.ChoiceField(
-        choices=[("COD", "Cash on Delivery"), ("ONLINE", "Online Payment")]
-    )
-    # Shipping details
-    full_name = serializers.CharField()
-    phone_no = serializers.CharField()
-    email = serializers.EmailField()
-    street_address = serializers.CharField()
+    payment_method = serializers.ChoiceField(choices=[("COD", "Cash on Delivery"), ("ONLINE", "Online Payment")])
+    shipping_id = serializers.IntegerField(required=False)
+    coupon_code = serializers.CharField(required=False, allow_blank=True)
+
+    # Shipping fields if no shipping_id is provided
+    full_name = serializers.CharField(required=False)
+    phone_no = serializers.CharField(required=False)
+    email = serializers.EmailField(required=False)
+    street_address = serializers.CharField(required=False)
     apartment = serializers.CharField(required=False, allow_blank=True)
     floor = serializers.CharField(required=False, allow_blank=True)
-    city = serializers.CharField()
-    zipcode = serializers.CharField()
+    city = serializers.CharField(required=False)
+    zipcode = serializers.CharField(required=False)
 
     def validate_product_id(self, value):
-        try:
-            Products.objects.get(id=value)
-        except Products.DoesNotExist:
+        if not Products.objects.filter(id=value).exists():
             raise serializers.ValidationError("Product does not exist.")
         return value
 
@@ -188,45 +235,78 @@ class BuyNowSerializer(serializers.Serializer):
         if quantity > product.available_stock:
             raise serializers.ValidationError(f"Only {product.available_stock} items available.")
 
-        # Create shipping address
-        shipping = Shipping.objects.create(
-            user=user,
-            full_name=validated_data["full_name"],
-            phone_no=validated_data["phone_no"],
-            email=validated_data["email"],
-            street_address=validated_data["street_address"],
-            apartment=validated_data.get("apartment", ""),
-            floor=validated_data.get("floor", ""),
-            city=validated_data["city"],
-            zipcode=validated_data["zipcode"],
-        )
+        # Handle shipping: use shipping_id or create new
+        shipping_id = validated_data.get("shipping_id")
+        if shipping_id:
+            shipping = get_object_or_404(Shipping, id=shipping_id, user=user)
+        else:
+            shipping = Shipping.objects.create(
+                user=user,
+                full_name=validated_data["full_name"],
+                phone_no=validated_data["phone_no"],
+                email=validated_data["email"],
+                street_address=validated_data["street_address"],
+                apartment=validated_data.get("apartment", ""),
+                floor=validated_data.get("floor", ""),
+                city=validated_data["city"],
+                zipcode=validated_data["zipcode"],
+            )
 
-        # Total amount
-        total_amount = (
-            product.discounted_price * quantity
-            if hasattr(product, "discounted_price")
-            else product.price * quantity
-        )
+        # Calculate product price with discount
+        product_price = getattr(product, "discounted_price", None) or product.price
+        total_amount = product.price * quantity  # original price
+        discounted_amount = product_price * quantity  # product discount applied
+        final_amount = discounted_amount
+
+        # Apply coupon if provided
+        coupon_code = validated_data.get("coupon_code")
+        coupon = None
+        if coupon_code:
+            try:
+                coupon = Coupon.objects.get(code=coupon_code, active=True)
+                now = timezone.now()
+                if coupon.valid_from and coupon.valid_from > now:
+                    raise serializers.ValidationError("Coupon is not yet valid.")
+                if coupon.valid_to and coupon.valid_to < now:
+                    raise serializers.ValidationError("Coupon has expired.")
+
+                # Apply coupon discount on discounted price
+                if coupon.discount_type == "percentage":
+                    final_amount -= (final_amount * Decimal(coupon.discount_value) / 100)
+                else:
+                    final_amount -= Decimal(coupon.discount_value)
+
+                final_amount = max(final_amount, Decimal("0.00"))
+                CouponRedemption.objects.get_or_create(coupon=coupon, user=user)
+
+            except Coupon.DoesNotExist:
+                raise serializers.ValidationError("Invalid coupon code.")
+
+        if final_amount <= 0:
+            raise serializers.ValidationError("Final amount is zero or negative. Cannot proceed to checkout.")
 
         # Create order
         order = Order.objects.create(
             user=user,
             shipping_address=shipping,
             total_amount=total_amount,
+            discounted_amount=discounted_amount,
+            final_amount=final_amount,
+            payment_method=validated_data["payment_method"],
             payment_status="pending" if validated_data["payment_method"] == "ONLINE" else "cod",
             order_status="PENDING",
-            payment_method=validated_data["payment_method"],
+            coupon=coupon
         )
 
-        # Create order item
+        # Create OrderItem
         OrderItem.objects.create(
             order=order,
             product=product,
             quantity=quantity,
-            price=product.discounted_price if hasattr(product, "discounted_price") else product.price,
+            price=product_price,
         )
 
-        # Update stock
+        # Reduce stock
         product.available_stock -= quantity
         product.save(update_fields=["available_stock"])
 
@@ -236,7 +316,6 @@ class BuyNowSerializer(serializers.Serializer):
             title="Order Placed",
             message=f"Your order {order.order_number} has been placed successfully.",
         )
-
         admins = User.objects.filter(is_staff=True)
         for admin in admins:
             Notification.objects.create(
@@ -246,5 +325,3 @@ class BuyNowSerializer(serializers.Serializer):
             )
 
         return order
-
-
