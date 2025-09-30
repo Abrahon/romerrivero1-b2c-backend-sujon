@@ -1,29 +1,40 @@
 from decimal import Decimal
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from rest_framework import generics, filters, status
+from django.utils import timezone
+
+from rest_framework import generics, filters, status, permissions
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+# b2c/orders/views.py
+from rest_framework import generics, permissions, status
+from rest_framework.response import Response
+from .models import Order
+from .serializers import AdminOrderStatusUpdateSerializer
+from notifications.models import Notification  # if you want to notify user
 from django_filters.rest_framework import DjangoFilterBackend
-
 from django.contrib.auth import get_user_model
-User = get_user_model()
-from rest_framework import generics, permissions
-from .serializers import OrderTrackingSerializer
+from rest_framework import generics, filters
+from rest_framework.permissions import IsAdminUser
+from .serializers import OrderListSerializer
 # Models
 from b2c.cart.models import CartItem
 from b2c.checkout.models import Shipping
 from b2c.products.models import Products
 from b2c.orders.models import Order, OrderItem, OrderTracking
+from b2c.coupons.models import Coupon, CouponRedemption
 from notifications.models import Notification
+
 # Serializers
 from b2c.orders.serializers import (
     OrderItemSerializer,
     OrderDetailSerializer,
     OrderTrackingSerializer,
-    BuyNowSerializer,  
+    BuyNowSerializer,
 )
+
+User = get_user_model()
 
 
 class OrderListView(generics.ListAPIView):
@@ -38,50 +49,7 @@ class OrderListView(generics.ListAPIView):
         return Order.objects.filter(user=self.request.user).select_related("shipping_address").prefetch_related("items__product").order_by("-created_at")
 
 
-from decimal import Decimal
-from django.db import transaction
-from django.shortcuts import get_object_or_404
-from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from django.utils import timezone
-from b2c.orders.models import Order, OrderItem, OrderTracking
-from b2c.cart.models import CartItem
-from b2c.coupons.models import Coupon, CouponRedemption
 
-from django.db import transaction
-from django.shortcuts import get_object_or_404
-from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework import generics, filters
-from rest_framework.permissions import IsAdminUser
-from django_filters.rest_framework import DjangoFilterBackend
-from b2c.orders.models import Order, OrderItem, OrderTracking
-from b2c.cart.models import CartItem
-from b2c.coupons.models import Coupon, CouponRedemption
-from b2c.checkout.models import Shipping
-
-from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from django.db import transaction
-from django.shortcuts import get_object_or_404
-from django.utils import timezone
-from decimal import Decimal
-from .models import Order, OrderItem, OrderTracking
-from b2c.products.models import Products
-from b2c.checkout.models import Shipping
-from b2c.coupons.models import Coupon, CouponRedemption
-
-from decimal import Decimal
-from django.db import transaction
-from django.shortcuts import get_object_or_404
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-# from .models import CartItem, Order, OrderItem, Shipping, Coupon, CouponRedemption
-# from .models import 
 
 class PlaceOrderView(APIView):
     permission_classes = [IsAuthenticated]
@@ -241,12 +209,6 @@ class OrderTrackingDetailView(generics.RetrieveAPIView):
 
 
 
-from rest_framework import generics, filters
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.permissions import IsAdminUser
-from .serializers import OrderListSerializer
-from .models import Order
-
 class OrderListFilter(generics.ListAPIView):
     """
     List all orders with searching and filtering.
@@ -266,17 +228,31 @@ class OrderListFilter(generics.ListAPIView):
 
 
 
+class AdminUpdateOrderStatusView(generics.UpdateAPIView):
+    serializer_class = AdminOrderStatusUpdateSerializer
+    permission_classes = [permissions.IsAdminUser]
+    queryset = Order.objects.all()
+    lookup_field = "id"
 
-from rest_framework import generics, status
-from rest_framework.response import Response
-from decimal import Decimal
-from .serializers import BuyNowSerializer
-from b2c.orders.models import Order
-from b2c.coupons.models import Coupon, CouponRedemption
+    def update(self, request, *args, **kwargs):
+        order = self.get_object()
+        serializer = self.get_serializer(order, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
 
-from rest_framework import generics, status
-from rest_framework.response import Response
-from .serializers import BuyNowSerializer
+        # Optional: Send notification to user
+        Notification.objects.create(
+            user=order.user,
+            title=f"Order {order.order_number} status updated",
+            message=f"Your order status has been updated to '{order.order_status}'."
+        )
+
+        return Response({
+            "message": f"Order {order.order_number} status updated successfully.",
+            "order_id": order.id,
+            "new_status": order.order_status
+        }, status=status.HTTP_200_OK)
+
 
 class BuyNowView(generics.CreateAPIView):
     serializer_class = BuyNowSerializer

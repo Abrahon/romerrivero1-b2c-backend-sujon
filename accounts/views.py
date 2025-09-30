@@ -169,25 +169,142 @@ class AdminCreateView(generics.CreateAPIView):
                         status=status.HTTP_201_CREATED) 
 
 
+# class GoogleLoginView(APIView):
+#     permission_classes = [AllowAny]
+#     def get(self, request):
+#         base_url = "https://accounts.google.com/o/oauth2/v2/auth"
+#         params = {
+#             "client_id": settings.GOOGLE_CLIENT_ID,
+#             "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+#             "response_type": "code",
+#             "scope": "openid email profile",
+#             "access_type": "offline", 
+#             "prompt": "consent",      
+#         }
+#         google_auth_url = f"{base_url}?{urlencode(params)}"
+#         return Response({"auth_url": google_auth_url})
+
+
+#  # google login
+# class GoogleCallbackView(APIView):
+#     def get(self, request):
+#         code = request.GET.get("code")
+#         if not code:
+#             return redirect(f"{settings.FRONTEND_REDIRECT_URL}?error=NoCode")
+
+#         # Exchange code for access token
+#         token_url = "https://oauth2.googleapis.com/token"
+#         data = {
+#             "code": code,
+#             "client_id": settings.GOOGLE_CLIENT_ID,
+#             "client_secret": settings.GOOGLE_CLIENT_SECRET,
+#             "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+#             "grant_type": "authorization_code",
+#         }
+#         token_response = requests.post(token_url, data=data).json()
+#         access_token = token_response.get("access_token")
+
+#         if not access_token:
+#             return redirect(f"{settings.FRONTEND_REDIRECT_URL}?error=InvalidToken")
+
+#         # Fetch user info
+#         user_info_url = "https://www.googleapis.com/oauth2/v1/userinfo"
+#         user_info = requests.get(user_info_url, params={"access_token": access_token}).json()
+
+#         email = user_info.get("email")
+#         name = user_info.get("name", "")
+
+#         if not email:
+#             return redirect(f"{settings.FRONTEND_REDIRECT_URL}?error=EmailNotFound")
+
+#         # Create or get user
+#         user, _ = User.objects.get_or_create(
+#             email=email,
+#             defaults={"username": email.split("@")[0], "first_name": name},
+#         )
+
+#         # Generate JWT
+#         refresh = RefreshToken.for_user(user)
+#         jwt_token = str(refresh.access_token)
+
+#         # Redirect back to frontend with JWT
+#         return redirect(f"{settings.FRONTEND_REDIRECT_URL}?token={jwt_token}")
+    
+# class GoogleExchangeView(APIView):
+#     def post(self, request):
+#         code = request.data.get("code")
+#         if not code:
+#             return Response({"error": "Code is required"}, status=400)
+
+#         token_url = "https://oauth2.googleapis.com/token"
+#         data = {
+#             "code": code,
+#             "client_id": settings.GOOGLE_CLIENT_ID,
+#             "client_secret": settings.GOOGLE_CLIENT_SECRET,
+#             "redirect_uri": "http://localhost:3000/google/callback",  # must match frontend
+#             "grant_type": "authorization_code",
+#         }
+
+#         r = requests.post(token_url, data=data)
+#         if r.status_code != 200:
+#             return Response({"error": r.json()}, status=400)
+
+#         token_data = r.json()
+#         access_token = token_data.get("access_token")
+
+#         # Fetch user info
+#         user_info = requests.get(
+#             "https://www.googleapis.com/oauth2/v3/userinfo",
+#             headers={"Authorization": f"Bearer {access_token}"}
+#         ).json()
+
+        
+#         return Response({"user": user_info})
+
+
+import requests
+from urllib.parse import urlencode
+
+from django.conf import settings
+from django.shortcuts import redirect
+from django.contrib.auth import get_user_model
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
+from rest_framework_simplejwt.tokens import RefreshToken
+
+User = get_user_model()
+
+
 class GoogleLoginView(APIView):
     permission_classes = [AllowAny]
+
     def get(self, request):
+        """
+        Step 1: Redirect user to Google Auth URL
+        """
         base_url = "https://accounts.google.com/o/oauth2/v2/auth"
         params = {
             "client_id": settings.GOOGLE_CLIENT_ID,
             "redirect_uri": settings.GOOGLE_REDIRECT_URI,
             "response_type": "code",
             "scope": "openid email profile",
-            "access_type": "offline", 
-            "prompt": "consent",      
+            "access_type": "offline",  # to get refresh token
+            "prompt": "consent",       # force account selection
         }
         google_auth_url = f"{base_url}?{urlencode(params)}"
         return Response({"auth_url": google_auth_url})
 
 
- # google login
 class GoogleCallbackView(APIView):
+    permission_classes = [AllowAny]
+
     def get(self, request):
+        """
+        Step 2: Google redirects here with ?code=...
+        We exchange code for token, fetch user info, create user, return JWT
+        """
         code = request.GET.get("code")
         if not code:
             return redirect(f"{settings.FRONTEND_REDIRECT_URL}?error=NoCode")
@@ -207,7 +324,7 @@ class GoogleCallbackView(APIView):
         if not access_token:
             return redirect(f"{settings.FRONTEND_REDIRECT_URL}?error=InvalidToken")
 
-        # Fetch user info
+        # Fetch user info from Google
         user_info_url = "https://www.googleapis.com/oauth2/v1/userinfo"
         user_info = requests.get(user_info_url, params={"access_token": access_token}).json()
 
@@ -229,9 +346,16 @@ class GoogleCallbackView(APIView):
 
         # Redirect back to frontend with JWT
         return redirect(f"{settings.FRONTEND_REDIRECT_URL}?token={jwt_token}")
-    
+
+
 class GoogleExchangeView(APIView):
+    permission_classes = [AllowAny]
+
     def post(self, request):
+        """
+        Step 3 (alternative flow):
+        Exchange authorization code for user info via POST from frontend
+        """
         code = request.data.get("code")
         if not code:
             return Response({"error": "Code is required"}, status=400)
@@ -241,10 +365,10 @@ class GoogleExchangeView(APIView):
             "code": code,
             "client_id": settings.GOOGLE_CLIENT_ID,
             "client_secret": settings.GOOGLE_CLIENT_SECRET,
-            "redirect_uri": "http://localhost:3000/google/callback",  # must match frontend
+            "redirect_uri": settings.GOOGLE_REDIRECT_URI,  # must match exactly
             "grant_type": "authorization_code",
         }
-
+     
         r = requests.post(token_url, data=data)
         if r.status_code != 200:
             return Response({"error": r.json()}, status=400)
@@ -252,11 +376,36 @@ class GoogleExchangeView(APIView):
         token_data = r.json()
         access_token = token_data.get("access_token")
 
+        if not access_token:
+            return Response({"error": "Invalid access token"}, status=400)
+
         # Fetch user info
         user_info = requests.get(
             "https://www.googleapis.com/oauth2/v3/userinfo",
             headers={"Authorization": f"Bearer {access_token}"}
         ).json()
 
-        
-        return Response({"user": user_info})
+        email = user_info.get("email")
+        name = user_info.get("name", "")
+
+        if not email:
+            return Response({"error": "No email from Google"}, status=400)
+
+        # Create or get user
+        user, _ = User.objects.get_or_create(
+            email=email,
+            defaults={"username": email.split("@")[0], "first_name": name},
+        )
+
+        # Generate JWT
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "name": user.first_name,
+            },
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+        })

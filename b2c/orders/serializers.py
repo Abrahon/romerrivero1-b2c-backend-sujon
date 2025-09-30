@@ -23,7 +23,7 @@ from b2c.orders.models import Order, OrderItem, OrderTracking
 from notifications.models import Notification
 from django.contrib.auth import get_user_model
 from .enums import  PaymentMethodChoices
-
+from .models import Order, OrderStatus
 from rest_framework import serializers
 from decimal import Decimal
 from django.db import transaction
@@ -130,42 +130,6 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             'stripe_checkout_session_id', 'created_at'
         ]
 
-class OrderTrackingSerializer(serializers.ModelSerializer):
-    updated_by = serializers.StringRelatedField(read_only=True)
-    order_items = serializers.SerializerMethodField()
-    shipping_address = serializers.SerializerMethodField()
-    items = OrderItemSerializer(many=True, read_only=True)
-    user_email = serializers.SerializerMethodField()
-
-    class Meta:
-        model = OrderTracking
-        fields = [
-            'id', 'order', 'status', 'note', 'updated_by', 'created_at',
-            'order_items', 'shipping_address', 'user_email','items'
-        ]
-        read_only_fields = ['updated_by', 'created_at','items']
-
-    def get_order_items(self, obj):
-        items = obj.order.items.all()
-        return OrderDetailSerializer(items, many=True).data
-
-    def get_shipping_address(self, obj):
-        shipping = getattr(obj.order, 'shipping_address', None)
-        if shipping:
-            return {
-                "full_name": shipping.full_name,
-                "phone_no": shipping.phone_no,
-                "email": shipping.email,
-                "street_address": shipping.street_address,
-                "apartment": shipping.apartment,
-                "floor": shipping.floor,
-                "city": shipping.city,
-                "zipcode": shipping.zipcode
-            }
-        return None
-
-    def get_user_email(self, obj):
-        return obj.order.user.email if obj.order.user else None
 
 
 from rest_framework import serializers
@@ -199,6 +163,55 @@ class OrderListSerializer(serializers.ModelSerializer):
             for i in items
         ]
 
+
+
+class OrderTrackingSerializer(serializers.ModelSerializer):
+    updated_by = serializers.StringRelatedField(read_only=True)
+    order_items = serializers.SerializerMethodField()
+    shipping_address = serializers.SerializerMethodField()
+    items = OrderListSerializer(many=True, read_only=True)
+    user_email = serializers.SerializerMethodField()
+
+    class Meta:
+        model = OrderTracking
+        fields = [
+            'id', 'order', 'status', 'note', 'updated_by', 'created_at',
+            'order_items', 'shipping_address', 'user_email','items'
+        ]
+        read_only_fields = ['updated_by', 'created_at','items']
+
+    def get_order_items(self, obj):
+        items = obj.order.items.all()
+        return OrderDetailSerializer(items, many=True).data
+
+    def get_shipping_address(self, obj):
+        shipping = getattr(obj.order, 'shipping_address', None)
+        if shipping:
+            return {
+                "full_name": shipping.full_name,
+                "phone_no": shipping.phone_no,
+                "email": shipping.email,
+                "street_address": shipping.street_address,
+                "apartment": shipping.apartment,
+                "floor": shipping.floor,
+                "city": shipping.city,
+                "zipcode": shipping.zipcode
+            }
+        return None
+
+    def get_user_email(self, obj):
+        return obj.order.user.email if obj.order.user else None
+
+
+class AdminOrderStatusUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = ["order_status"]
+
+    def validate_order_status(self, value):
+        if value not in OrderStatus.values:
+            raise serializers.ValidationError("Invalid order status.")
+        return value
 
 
 

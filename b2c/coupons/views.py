@@ -1,4 +1,3 @@
-
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from .models import Coupon, CouponRedemption
@@ -11,6 +10,11 @@ from rest_framework.response import Response
 from .serializers import ApplyCouponSerializer
 from b2c.products.models import Products
 from .models import CouponRedemption
+from decimal import Decimal
+from rest_framework import generics, status
+from rest_framework.response import Response
+from .serializers import ApplyCouponSerializer
+from b2c.coupons.models import CouponRedemption
 
 # ---------------- Admin Coupon Management ----------------
 class CouponListCreateView(generics.ListCreateAPIView):
@@ -47,11 +51,7 @@ class CouponRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 
 
 
-from decimal import Decimal
-from rest_framework import generics, status
-from rest_framework.response import Response
-from .serializers import ApplyCouponSerializer
-from b2c.coupons.models import CouponRedemption
+
 
 class ApplyCouponView(generics.GenericAPIView):
     serializer_class = ApplyCouponSerializer
@@ -90,46 +90,3 @@ class ApplyCouponView(generics.GenericAPIView):
             "final_amount": str(final_amount),
             "applied_products": [p.id for p in products],
         }, status=status.HTTP_200_OK)
-
-# from decimal import Decimal
-# from rest_framework import generics, status
-# from rest_framework.response import Response
-# from .serializers import ApplyCouponSerializer
-# from .models import CouponRedemption
-
-# class ApplyCouponView(generics.GenericAPIView):
-#     serializer_class = ApplyCouponSerializer
-
-#     def post(self, request, *args, **kwargs):
-#         serializer = self.get_serializer(data=request.data)
-#         serializer.is_valid(raise_exception=True)
-
-#         coupon = serializer.validated_data["coupon"]
-#         products = serializer.validated_data["products"]
-
-#         # ✅ Calculate total price using discounted_price of each product
-#         total_amount = sum([p.discounted_price for p in products])
-
-#         # ✅ Calculate coupon discount
-#         if coupon.discount_type == "percentage":
-#             discount_amount = (total_amount * Decimal(coupon.discount_value)) / Decimal("100")
-#         else:  # fixed discount
-#             discount_amount = Decimal(coupon.discount_value)
-
-#         # ✅ Final amount after applying coupon
-#         final_amount = total_amount - discount_amount
-#         if final_amount < 0:
-#             final_amount = Decimal("0.00")
-
-#         # ✅ Record redemption (avoid duplicate per user)
-#         CouponRedemption.objects.get_or_create(coupon=coupon, user=request.user)
-
-#         return Response({
-#             "message": f"Coupon applied successfully! You get {coupon.discount_value} {coupon.discount_type} discount.",
-#             "discount_type": coupon.discount_type,
-#             "discount_value": str(coupon.discount_value),
-#             "total_amount": str(total_amount),           # Total discounted price
-#             "discounted_amount": str(discount_amount),  # Coupon discount
-#             "final_amount": str(final_amount),
-#             "applied_products": [p.id for p in products],
-#         }, status=status.HTTP_200_OK)

@@ -1,12 +1,9 @@
 
-
 from rest_framework import serializers
 from django.utils import timezone
 from .models import Coupon, CouponRedemption, Products, ProductCategory
 from .enums import DiscountType
 from decimal import Decimal
-
-
 
 
 class CouponSerializer(serializers.ModelSerializer):

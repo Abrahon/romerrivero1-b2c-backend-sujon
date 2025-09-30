@@ -339,24 +339,33 @@ class UserConversationView(generics.ListCreateAPIView):
 # user convirsession
 
 
+from rest_framework import generics, permissions
+from django.shortcuts import get_object_or_404
+from django.db.models import Q
+from accounts.models import User
+from b2c.chat.models import Message
+from b2c.chat.serializers import MessageSerializer
+
+
 class AdminConversationView(generics.ListAPIView):
     serializer_class = MessageSerializer
     permission_classes = [permissions.IsAdminUser]
     pagination_class = None
 
     def get_queryset(self):
-        # Current admin user
-        admin = self.request.user
-
-        # Get the other user
+        admin = self.request.user  # logged-in admin
         other_user_id = self.kwargs.get("user_id")
+
+        # Ensure the target is a normal user (not staff)
         other_user = get_object_or_404(User, id=other_user_id, is_staff=False)
 
-        # Return all messages between admin and this user
+        # ✅ Only messages between THIS admin and THIS specific user
         return Message.objects.filter(
-            Q(sender=admin, receiver=other_user) |
-            Q(sender=other_user, receiver=admin)
-        ).order_by("timestamp")
+    Q(sender=other_user) | Q(receiver=other_user)
+).select_related("sender", "receiver").order_by("timestamp")
+
+
+
 
 
 

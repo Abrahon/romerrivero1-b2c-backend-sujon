@@ -16,7 +16,7 @@ from django.utils import timezone
 import cloudinary.uploader
 from rest_framework import serializers
 from .models import ProductCategory
-
+from b2c.wishlist.models import WishlistItem
 import cloudinary.uploader
 from rest_framework import serializers
 from .models import ProductCategory
@@ -35,11 +35,10 @@ class CategorySerializer(serializers.ModelSerializer):
 
 
 
-
-
 class ProductSerializer(serializers.ModelSerializer):
     category = serializers.PrimaryKeyRelatedField(queryset=ProductCategory.objects.all())
     category_detail = CategorySerializer(source="category", read_only=True)
+    in_wishlist = serializers.SerializerMethodField()
     colors = serializers.ListField(
         child=serializers.CharField(), required=True, allow_empty=True
     )
@@ -73,6 +72,12 @@ class ProductSerializer(serializers.ModelSerializer):
         except Exception:
             return None
         return None
+    def get_in_wishlist(self, obj):
+        request = self.context.get("request")
+        user = request.user if request else None
+        if user and user.is_authenticated:
+            return WishlistItem.objects.filter(user=user, product=obj).exists()
+        return False
 
     # ----------------------
     # Colors
@@ -127,43 +132,6 @@ class ProductSerializer(serializers.ModelSerializer):
 
         return product
 
-
-    # def update(self, instance, validated_data):
-    # # ----------------------
-    # # Colors
-    # # ----------------------
-    #     colors = validated_data.pop("colors", None)
-    #     if colors is not None:
-    #         instance.colors = colors
-
-    #     # ----------------------
-    #     # Images
-    #     # ----------------------
-    #     # Handle uploaded images
-    #     images = validated_data.pop("images_upload", None)
-    #     replace_images = self.initial_data.get("replace_images", False)
-    #     delete_images = self.initial_data.get("delete_images", [])
-
-    #     # Remove images if delete_images provided
-    #     if delete_images:
-    #         instance.images = [img for img in (instance.images or []) if img not in delete_images]
-
-    #     # Add new uploaded images
-    #     if images:
-    #         uploaded_urls = self._upload_images(images)
-    #         if replace_images:
-    #             instance.images = uploaded_urls
-    #         else:
-    #             instance.images = (instance.images or []) + uploaded_urls
-
-    #     # ----------------------
-    #     # Update other fields
-    #     # ----------------------
-    #     for attr, value in validated_data.items():
-    #         setattr(instance, attr, value)
-
-    #     instance.save()
-    #     return instance
 
     def update(self, instance, validated_data):
         images = validated_data.pop("images_upload", None)

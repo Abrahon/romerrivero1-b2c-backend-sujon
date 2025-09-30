@@ -9,7 +9,6 @@ class WishlistItemSerializer(serializers.ModelSerializer):
     product_details = ProductSerializer(source='product', read_only=True)
     in_wishlist = serializers.SerializerMethodField()
     average_rating = serializers.SerializerMethodField()
-    # image = serializers.SerializerMethodField() 
 
     class Meta:
         model = WishlistItem

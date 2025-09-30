@@ -1,11 +1,9 @@
 
-
 from django.db import models
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from b2c.products.models import Products,ProductCategory 
 from .enums import DiscountType
-
 
 
 class Coupon(models.Model):

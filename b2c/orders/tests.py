@@ -13,7 +13,7 @@ def send_order_confirmation_email(sender, instance, created, **kwargs):
         # Fix: Use 'total_amount' instead of 'total_price'
         send_mail(
             subject=f"Order Confirmation - {instance.order_number}",
-            message=f"Your order {instance.order_number} has been confirmed. Total: {instance.total_amount}",
+            message=f"Your order {instance.order_number} has been confirmed. Total: {instance.final_ammount}",
             from_email="no-reply@yourdomain.com",
             recipient_list=[instance.user.email],
         )
