@@ -9,7 +9,6 @@ def get_client_ip(request):
         ip = x_forwarded_for.split(',')[0].strip()
     else:
         ip = request.META.get('REMOTE_ADDR', '0.0.0.0')
-    print("Visitor IP:", ip)
     return ip
 
 class VisitorTrackingMiddleware:
@@ -21,15 +20,14 @@ class VisitorTrackingMiddleware:
         ip = get_client_ip(request)
 
         try:
-            # Use update_or_create safely
             Visitor.objects.update_or_create(
                 user=user,
                 ip_address=ip,
                 defaults={'last_visit': timezone.now()}
             )
-        except IntegrityError:
-            # Rare case: race condition caused duplicate, just update the latest
-            visitor = Visitor.objects.filter(user=user, ip_address=ip).first()
+        except Visitor.MultipleObjectsReturned:
+            # Handle duplicates gracefully by updating the latest record
+            visitor = Visitor.objects.filter(user=user, ip_address=ip).order_by('-last_visit').first()
             if visitor:
                 visitor.last_visit = timezone.now()
                 visitor.save()

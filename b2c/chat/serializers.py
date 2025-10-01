@@ -54,11 +54,21 @@ class UserListSerializer(serializers.ModelSerializer):
                     'sender': last_msg.sender.email
                 }
         return None
+from rest_framework import serializers
+from .models import ChatBot, TrainingData
 
 class ChatBotSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatBot
-        fields = ["id", "query", "answer"]
+        fields = ['id', 'query', 'answer', 'created_at']
+        read_only_fields = ['id', 'answer', 'created_at']
 
 
+class TrainingDataSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TrainingData
+        fields = ['id', 'category', 'context', 'question', 'ai_response', 'keywords', 'pinecone_id', 'created_at']
 
+
+class ChatQuerySerializer(serializers.Serializer):
+    query = serializers.CharField(max_length=500)

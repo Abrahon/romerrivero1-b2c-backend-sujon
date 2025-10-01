@@ -8,8 +8,7 @@ from .views import (
     MyConversationListView,
     AdminSendMessageView,
     UpdateDeleteMessageView,
-    ChatBotList,
-    ChatBotCreateView
+ 
 )
 
 urlpatterns = [
@@ -27,7 +26,7 @@ urlpatterns = [
     path('message/<int:pk>/', UpdateDeleteMessageView.as_view(), name='update_delete_message'),
 
     # -------------------- ChatBot --------------------
-    path('chatbot/', ChatBotList.as_view(), name='chatbot_list'),
-    path('chatbot/create/', ChatBotCreateView.as_view(), name='chatbot_create'),
+    # path('chatbot/', ChatBotList.as_view(), name='chatbot_list'),
+    # path('chatbot/create/', ChatBotCreateView.as_view(), name='chatbot_create'),
 ]
 
