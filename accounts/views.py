@@ -348,14 +348,71 @@ class GoogleCallbackView(APIView):
         return redirect(f"{settings.FRONTEND_REDIRECT_URL}?token={jwt_token}")
 
 
+# class GoogleExchangeView(APIView):
+#     permission_classes = [AllowAny]
+
+#     def post(self, request):
+#         """
+#         Step 3 (alternative flow):
+#         Exchange authorization code for user info via POST from frontend
+#         """
+#         code = request.data.get("code")
+#         if not code:
+#             return Response({"error": "Code is required"}, status=400)
+
+#         token_url = "https://oauth2.googleapis.com/token"
+#         data = {
+#             "code": code,
+#             "client_id": settings.GOOGLE_CLIENT_ID,
+#             "client_secret": settings.GOOGLE_CLIENT_SECRET,
+#             "redirect_uri": settings.GOOGLE_REDIRECT_URI,  # must match exactly
+#             "grant_type": "authorization_code",
+#         }
+     
+#         r = requests.post(token_url, data=data)
+#         if r.status_code != 200:
+#             return Response({"error": r.json()}, status=400)
+
+#         token_data = r.json()
+#         access_token = token_data.get("access_token")
+
+#         if not access_token:
+#             return Response({"error": "Invalid access token"}, status=400)
+
+#         # Fetch user info
+#         user_info = requests.get(
+#             "https://www.googleapis.com/oauth2/v3/userinfo",
+#             headers={"Authorization": f"Bearer {access_token}"}
+#         ).json()
+
+#         email = user_info.get("email")
+#         name = user_info.get("name", "")
+
+#         if not email:
+#             return Response({"error": "No email from Google"}, status=400)
+
+#         # Create or get user
+#         user, _ = User.objects.get_or_create(
+#             email=email,
+#             defaults={"username": email.split("@")[0], "first_name": name},
+#         )
+
+#         # Generate JWT
+#         refresh = RefreshToken.for_user(user)
+
+#         return Response({
+#             "user": {
+#                 "id": user.id,
+#                 "email": user.email,
+#                 "name": user.first_name,
+#             },
+#             "refresh": str(refresh),
+#             "access": str(refresh.access_token),
+#         })
 class GoogleExchangeView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        """
-        Step 3 (alternative flow):
-        Exchange authorization code for user info via POST from frontend
-        """
         code = request.data.get("code")
         if not code:
             return Response({"error": "Code is required"}, status=400)
@@ -365,21 +422,19 @@ class GoogleExchangeView(APIView):
             "code": code,
             "client_id": settings.GOOGLE_CLIENT_ID,
             "client_secret": settings.GOOGLE_CLIENT_SECRET,
-            "redirect_uri": settings.GOOGLE_REDIRECT_URI,  # must match exactly
+            "redirect_uri": settings.GOOGLE_REDIRECT_URI,
             "grant_type": "authorization_code",
-        }
-     
+        }         
+
         r = requests.post(token_url, data=data)
         if r.status_code != 200:
             return Response({"error": r.json()}, status=400)
 
         token_data = r.json()
         access_token = token_data.get("access_token")
-
         if not access_token:
             return Response({"error": "Invalid access token"}, status=400)
 
-        # Fetch user info
         user_info = requests.get(
             "https://www.googleapis.com/oauth2/v3/userinfo",
             headers={"Authorization": f"Bearer {access_token}"}
@@ -391,20 +446,19 @@ class GoogleExchangeView(APIView):
         if not email:
             return Response({"error": "No email from Google"}, status=400)
 
-        # Create or get user
+        # Only use fields that exist in your custom User model
         user, _ = User.objects.get_or_create(
             email=email,
-            defaults={"username": email.split("@")[0], "first_name": name},
+            defaults={"name": name}
         )
 
-        # Generate JWT
         refresh = RefreshToken.for_user(user)
 
         return Response({
             "user": {
                 "id": user.id,
                 "email": user.email,
-                "name": user.first_name,
+                "name": user.name,
             },
             "refresh": str(refresh),
             "access": str(refresh.access_token),

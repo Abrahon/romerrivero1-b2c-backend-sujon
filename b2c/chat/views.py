@@ -159,8 +159,8 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from .models import Message, ChatBot
-from .serializers import MessageSerializer, ChatBotSerializer
+from .models import Message
+from .serializers import MessageSerializer
 from accounts.permissions import IsAdminUser
 from .serializers import MessageSerializer,UserListSerializer
 
@@ -274,8 +274,8 @@ from django.db.models import Q, Max
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from accounts.models import User
-from .models import Message, ChatBot
-from .serializers import MessageSerializer, UserListSerializer, ChatBotSerializer
+from .models import Message
+from .serializers import MessageSerializer, UserListSerializer
 from accounts.permissions import IsAdminUser
 from django.db.models import Max, Q, F
 from django.db.models.functions import Coalesce
@@ -445,22 +445,149 @@ class UpdateDeleteMessageView(generics.RetrieveUpdateDestroyAPIView):
         instance.delete()
 
 
-# -------------------- ChatBot --------------------
-class ChatBotList(generics.ListAPIView):
-    serializer_class = ChatBotSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    pagination_class=None
-    queryset = ChatBot.objects.all()
+import requests
+from rest_framework import generics, status
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from .models import TrainData, ChatBotQuery
+from .serializers import TrainDataSerializer, ChatBotQuerySerializer, ChatQuerySerializer
 
 
-class ChatBotCreateView(generics.CreateAPIView):
-    serializer_class = ChatBotSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    pagination_class=None
-    
+AI_BASE_URL = "http://127.0.0.1:8001"  # your FastAPI AI model
+
+
+# -------------------------------
+# Training Data Views
+# -------------------------------
+class TrainingDataListCreateView(generics.ListCreateAPIView):
+    queryset = TrainData.objects.all().order_by("-id")
+    serializer_class = TrainDataSerializer
+    pagination_class = None
 
     def perform_create(self, serializer):
-        query = self.request.data.get("query")
-        if not query:
-            raise serializers.ValidationError({"query": "Query is required."})
-        serializer.save(user=self.request.user, query=query)
+        training_data = serializer.save()
+        # Send data to AI model
+        payload = {
+            "category": training_data.category,
+            "context": training_data.context,
+            "question": training_data.question,
+            "ai_response": training_data.ai_response,
+            "keywords": training_data.keywords,
+        }
+        try:
+            requests.post(f"{AI_BASE_URL}/train_data", json=payload, timeout=10)
+        except requests.RequestException:
+            pass  # Fail silently if AI server is down
+
+
+class TrainingDataDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = TrainData.objects.all()
+    serializer_class = TrainDataSerializer
+    pagination_class = None
+    lookup_field = "id"
+
+    def perform_update(self, serializer):
+        training_data = serializer.save()
+        payload = {
+            "category": training_data.category,
+            "context": training_data.context,
+            "question": training_data.question,
+            "ai_response": training_data.ai_response,
+            "keywords": training_data.keywords,
+        }
+        try:
+            requests.post(f"{AI_BASE_URL}/train_data", json=payload, timeout=10)
+        except requests.RequestException:
+            pass
+
+
+# -------------------------------
+# Chat Query
+# -------------------------------
+class ChatQueryView(APIView):
+    pagination_class = None
+    """
+    Send query to AI model and save response
+    """
+    def post(self, request):
+        serializer = ChatQuerySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        query_text = serializer.validated_data["query"]
+        
+
+        # Send to AI model
+        try:
+            ai_response = requests.post(
+                f"{AI_BASE_URL}/query",
+                json={"query": query_text},
+                timeout=30
+            ).json()
+        except requests.Timeout:
+            return Response({"error": "AI model timed out"}, status=504)
+        except requests.RequestException as e:
+            return Response({"error": "AI model unavailable", "details": str(e)}, status=503)
+
+        # Extract the actual AI answer
+        answer_text = ai_response.get("answer", {}).get("result", "")
+
+        # Save chat history
+        chat = ChatBotQuery.objects.create(
+            user=request.user,
+            query=query_text,
+            ai_response=answer_text
+        )
+
+        response_data = {
+            "query": query_text,
+            "ai_response": answer_text,
+            "chat_id": chat.id
+        }
+
+        return Response(response_data, status=status.HTTP_200_OK)
+
+
+# -------------------------------
+# Chat History
+# -------------------------------
+# class ChatBotQueryListView(generics.ListAPIView):
+#     serializer_class = ChatBotQuerySerializer
+#     pagination_class = None
+
+#     def get_queryset(self):
+#         return ChatBotQuery.objects.filter(user=self.request.user).order_by("-created_at")
+
+# dashboard get
+
+class ChatBotQueryStatsView(generics.ListAPIView):
+    serializer_class = ChatBotQuerySerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        # Fetch all chat history for the logged-in user
+        return ChatBotQuery.objects.filter(user=self.request.user).order_by("-created_at")
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+
+        # Total conversations
+        total_conversations = queryset.count()
+
+        # Example logic for qualified leads:
+        qualified_leads = queryset.filter(ai_response__icontains="qualified").count()
+
+        # Conversation rate
+        conversation_rate = (qualified_leads / total_conversations * 100) if total_conversations > 0 else 0
+
+        # Recent conversations (last 5)
+        recent_conversations = queryset[:5]
+        recent_serializer = self.get_serializer(recent_conversations, many=True)
+
+        return Response({
+            "total_conversations": total_conversations,
+            "qualified_leads": qualified_leads,
+            "conversation_rate": round(conversation_rate, 2),
+            "recent_conversations": recent_serializer.data,
+            "all_chat_history": serializer.data
+        })

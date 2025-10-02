@@ -201,10 +201,39 @@ class OrderTrackingView(generics.ListAPIView):
 
 
 
-class OrderTrackingDetailView(generics.RetrieveAPIView):
-    queryset = OrderTracking.objects.all().select_related('order', 'updated_by', 'order__user', 'order__shipping_address')
+from rest_framework import generics, permissions
+from rest_framework.response import Response
+from .models import Order, OrderTracking
+from .serializers import OrderTrackingSerializer
+from django.shortcuts import get_object_or_404
+
+class OrderTrackingView(generics.RetrieveAPIView):
     serializer_class = OrderTrackingSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]  # Only the user can access their orders
+
+    def get_object(self):
+        order_identifier = self.kwargs.get("order_identifier")  # e.g., "ORD-20250929223618-1e874b"
+        
+        # Get the order based on order_number
+        order = get_object_or_404(Order, order_number=order_identifier, user=self.request.user)
+
+        # Get all tracking records for this order (optional: latest first)
+        tracking_qs = OrderTracking.objects.filter(order=order).select_related(
+            "updated_by", "order", "order__user", "order__shipping_address"
+        ).order_by("-created_at")
+
+        if not tracking_qs.exists():
+            # Optionally, create initial tracking if missing
+            tracking = OrderTracking.objects.create(
+                order=order,
+                status="PENDING",
+                note="Order automatically created"
+            )
+            tracking_qs = OrderTracking.objects.filter(order=order).order_by("-created_at")
+
+        return tracking_qs.first()  # Retrieve latest tracking entry
+
+
 
 
 

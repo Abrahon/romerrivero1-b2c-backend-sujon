@@ -8,8 +8,13 @@ from .views import (
     MyConversationListView,
     AdminSendMessageView,
     UpdateDeleteMessageView,
- 
+    TrainingDataListCreateView,
+    TrainingDataDetailView,
+    ChatQueryView,
+    ChatBotQueryStatsView,
 )
+ 
+
 
 urlpatterns = [
     # -------------------- User Endpoints --------------------
@@ -26,7 +31,9 @@ urlpatterns = [
     path('message/<int:pk>/', UpdateDeleteMessageView.as_view(), name='update_delete_message'),
 
     # -------------------- ChatBot --------------------
-    # path('chatbot/', ChatBotList.as_view(), name='chatbot_list'),
-    # path('chatbot/create/', ChatBotCreateView.as_view(), name='chatbot_create'),
-]
+    path('train_data/', TrainingDataListCreateView.as_view(), name='train-data-list-create'),
+    path('train_data/<int:id>/', TrainingDataDetailView.as_view(), name='train-data-detail'),
+    path('query/', ChatQueryView.as_view(), name='chat-query'),
+    path('history/', ChatBotQueryStatsView.as_view(), name='chat-history'),
 
+ ]

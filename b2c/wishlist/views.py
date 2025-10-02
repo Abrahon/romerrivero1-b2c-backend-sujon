@@ -6,6 +6,7 @@ from .serializers import WishlistItemSerializer
 from b2c.products.models import Products
 from django.shortcuts import get_object_or_404
 
+
 class WishlistListCreateView(generics.ListCreateAPIView):
     """
     GET: List all wishlist items for the logged-in user
@@ -40,23 +41,39 @@ class WishlistListCreateView(generics.ListCreateAPIView):
         )
 
 
+# urls.py
+
+
+
 class WishlistRemoveView(generics.DestroyAPIView):
     """
-    DELETE: Remove a product from wishlist
+    DELETE: Remove a product from wishlist by product ID
     """
     permission_classes = [IsAuthenticated]
-    lookup_url_kwarg = "item_id"
 
     def get_queryset(self):
+        # Wishlist items for logged-in user
         return WishlistItem.objects.filter(user=self.request.user)
 
     def destroy(self, request, *args, **kwargs):
-        item_id = kwargs.get(self.lookup_url_kwarg)
+        product_id = kwargs.get("product_id")
+        if not product_id:
+            return Response({"error": "Product ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Get the product
+        product = get_object_or_404(Products, id=product_id)
+
         try:
-            wishlist_item = self.get_queryset().get(id=item_id)
+            # Find wishlist item for this user and product
+            wishlist_item = self.get_queryset().get(product=product)
             wishlist_item.delete()
-            return Response({"message": "Product removed from wishlist successfully."}, status=status.HTTP_200_OK)
+            return Response(
+                {"message": f"Product '{product.title}' removed from wishlist successfully."},
+                status=status.HTTP_200_OK
+            )
         except WishlistItem.DoesNotExist:
-            return Response({"error": "Wishlist item not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Product is not in your wishlist."}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+

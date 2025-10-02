@@ -1,10 +1,9 @@
 from rest_framework import serializers
-from .models import Message, ChatBot
+from .models import Message
 from accounts.models import User
 from django.db.models import Q, Max
 
 from rest_framework import serializers
-from .models import Message, ChatBot
 from accounts.models import User
 
 class MessageSerializer(serializers.ModelSerializer):
@@ -54,21 +53,34 @@ class UserListSerializer(serializers.ModelSerializer):
                     'sender': last_msg.sender.email
                 }
         return None
+    
 from rest_framework import serializers
-from .models import ChatBot, TrainingData
+from .models import TrainData, ChatBotQuery
 
-class ChatBotSerializer(serializers.ModelSerializer):
+
+class TrainDataSerializer(serializers.ModelSerializer):
     class Meta:
-        model = ChatBot
-        fields = ['id', 'query', 'answer', 'created_at']
-        read_only_fields = ['id', 'answer', 'created_at']
+        model = TrainData
+        fields = [
+            "id",
+            "category",
+            "context",
+            "question",
+            "ai_response",
+            "keywords",
+        ]
 
 
-class TrainingDataSerializer(serializers.ModelSerializer):
+class ChatBotQuerySerializer(serializers.ModelSerializer):
     class Meta:
-        model = TrainingData
-        fields = ['id', 'category', 'context', 'question', 'ai_response', 'keywords', 'pinecone_id', 'created_at']
+        model = ChatBotQuery
+        fields = ["id", "user", "query", "ai_response"]
+        read_only_fields = ["id", "ai_response"]
 
 
 class ChatQuerySerializer(serializers.Serializer):
+    """
+    For handling user queries to the chatbot.
+    No model binding, just input validation.
+    """
     query = serializers.CharField(max_length=500)

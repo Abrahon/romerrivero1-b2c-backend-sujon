@@ -10,9 +10,11 @@ class PaymentStatus(models.TextChoices):
 class OrderStatus(models.TextChoices):
     PENDING = "pending", "Pending"
     PROCESSING = "processing", "Processing"
-    SHIPPED = "shipped", "Shipped"
-    DELIVERED = "delivered", "Delivered"
+    REJECTED = "rejected", "Rejected"
     CANCELLED = "cancelled", "Cancelled"
+    COMPLETED = "completed", "Completed"
+    DELIVERED = "delivered", "Delivered"
+
 
 
 class PaymentMethodChoices(models.TextChoices):

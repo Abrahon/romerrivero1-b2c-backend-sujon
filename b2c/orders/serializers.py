@@ -49,6 +49,7 @@ from .models import OrderItem
 from b2c.products.serializers import ProductSerializer 
 
 class OrderItemSerializer(serializers.ModelSerializer):
+    product = ProductSerializer(read_only=True)
     product_name = serializers.CharField(source="product.title", read_only=True)
     product_image = serializers.ImageField(source="product.image", read_only=True)
     product_discount = serializers.SerializerMethodField()
@@ -89,7 +90,9 @@ class OrderItemSerializer(serializers.ModelSerializer):
         coupon = getattr(obj.order, "coupon", None)
         if coupon:
             return coupon.discount_value
+            # return order.coupon.discount_value
         return 0
+    
 
     def get_final_price(self, obj):
         price = Decimal(str(obj.product.discounted_price)) 
@@ -166,11 +169,16 @@ class OrderListSerializer(serializers.ModelSerializer):
 
 
 
+from rest_framework import serializers
+from decimal import Decimal
+from .models import OrderTracking, OrderItem
+from b2c.orders.serializers import OrderDetailSerializer  # make sure import is correct
+
 class OrderTrackingSerializer(serializers.ModelSerializer):
     updated_by = serializers.StringRelatedField(read_only=True)
     order_items = serializers.SerializerMethodField()
     shipping_address = serializers.SerializerMethodField()
-    items = OrderListSerializer(many=True, read_only=True)
+    items = OrderDetailSerializer(many=True, read_only=True, source='order.items')
     user_email = serializers.SerializerMethodField()
     total_amount = serializers.SerializerMethodField() 
 
@@ -178,16 +186,13 @@ class OrderTrackingSerializer(serializers.ModelSerializer):
         model = OrderTracking
         fields = [
             'id', 'order', 'status', 'note', 'updated_by', 'created_at',
-            'order_items', 'shipping_address', 'user_email','total_amount','items'
+            'order_items', 'shipping_address', 'user_email', 'total_amount', 'items'
         ]
-        read_only_fields = ['updated_by', 'created_at','items','total_amount']
+        read_only_fields = ['updated_by', 'created_at', 'items', 'total_amount']
 
     def get_order_items(self, obj):
-        items = obj.order.items.all()
+        items = obj.order.items.all()  # make sure related_name='items'
         return OrderDetailSerializer(items, many=True).data
-    
-    # def get_items(self,obj):
-
 
     def get_shipping_address(self, obj):
         shipping = getattr(obj.order, 'shipping_address', None)
@@ -206,16 +211,12 @@ class OrderTrackingSerializer(serializers.ModelSerializer):
 
     def get_user_email(self, obj):
         return obj.order.user.email if obj.order.user else None
-    
+
     def get_total_amount(self, obj):
-        """
-        Sum the price of all order items * quantity
-        """
-        items = obj.order.items.all()
         total = Decimal("0.00")
-        for item in items:
+        for item in obj.order.items.all():
             total += Decimal(item.price) * item.quantity
-        return str(total) 
+        return str(total)
 
 
 class AdminOrderStatusUpdateSerializer(serializers.ModelSerializer):

@@ -20,6 +20,8 @@ from b2c.wishlist.models import WishlistItem
 import cloudinary.uploader
 from rest_framework import serializers
 from .models import ProductCategory
+# from b2c.wishlist.serializers import WishlistItemSerializer
+
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -34,11 +36,11 @@ class CategorySerializer(serializers.ModelSerializer):
         return None
 
 
-
 class ProductSerializer(serializers.ModelSerializer):
     category = serializers.PrimaryKeyRelatedField(queryset=ProductCategory.objects.all())
     category_detail = CategorySerializer(source="category", read_only=True)
     in_wishlist = serializers.SerializerMethodField()
+    # product_details = WishlistItemSerializer(source='wislist', read_only=True)
     colors = serializers.ListField(
         child=serializers.CharField(), required=True, allow_empty=True
     )
@@ -72,12 +74,13 @@ class ProductSerializer(serializers.ModelSerializer):
         except Exception:
             return None
         return None
+    
     def get_in_wishlist(self, obj):
-        request = self.context.get("request")
-        user = request.user if request else None
-        if user and user.is_authenticated:
+        user = self.context.get("request").user
+        if user.is_authenticated:
             return WishlistItem.objects.filter(user=user, product=obj).exists()
         return False
+
 
     # ----------------------
     # Colors
