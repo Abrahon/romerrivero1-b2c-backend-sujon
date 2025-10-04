@@ -5,7 +5,6 @@ urlpatterns = [
     path("admin-profile/", views.AdminProfileView.as_view(), name="adminprofile-detail"),
 
     path("company-profile/", views.CompanyDetailsRetrieveUpdateDestroyAPIView.as_view(), name="company-list-create"),
-    # path("company-profiles/", views.CompanyDetailsRetrieveUpdateDestroyAPIView.as_view(), name="company-detail"),
 
     path("notifications/", views.AdminNotificationListAPIView.as_view(), name="admin-notification-list"),
     # email security

@@ -11,21 +11,9 @@ from b2c.orders.models import Order
 from notifications.models import Notification
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt
-
-
-
-import logging
-import stripe
-from django.conf import settings
-from django.http import HttpResponse
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-
+from datetime import timedelta
+from django.utils import timezone
 # from b2c.orders.models import Order, Notification
 
 logger = logging.getLogger(__name__)
@@ -33,7 +21,7 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 class CreateCheckoutSessionView(APIView):
-    # permission_classes = [IsAuthenticated]  # Only authenticated users can pay
+    permission_classes = [IsAuthenticated]  # Only authenticated users can pay
 
     def post(self, request, *args, **kwargs):
         order_id = request.data.get("order_id")
@@ -76,7 +64,7 @@ class CreateCheckoutSessionView(APIView):
             return Response({
                 "id": session.id,
                 "url": session.url,
-                "final_amount": str(order.final_amount),
+                "final_amount": str(order.final_amount),    
             }, status=200)
 
         except Exception as e:
@@ -85,49 +73,7 @@ class CreateCheckoutSessionView(APIView):
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
-# class StripeWebhookView(APIView):
-#     authentication_classes = []  # Public webhook
-#     permission_classes = []
-
-#     def post(self, request, *args, **kwargs):
-#         payload = request.body
-#         sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
-
-#         try:
-#             event = stripe.Webhook.construct_event(
-#                 payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
-#             )
-#         except stripe.error.SignatureVerificationError:
-#             logger.warning("Stripe webhook signature verification failed")
-#             return HttpResponse(status=400)
-#         except Exception as e:
-#             logger.error(f"Stripe webhook error: {str(e)}")
-#             return HttpResponse(status=400)
-
-#         # Payment succeeded
-#         if event["type"] == "checkout.session.completed":
-#             session = event["data"]["object"]
-#             session_id = session.get("id")
-
-#             try:
-#                 order = Order.objects.get(stripe_checkout_session_id=session_id)
-#                 order.is_paid = True
-#                 order.payment_status = "paid"
-#                 order.order_status = "PROCESSING"
-#                 order.save(update_fields=["is_paid", "payment_status", "order_status"])
-
-#                 # Notify customer
-#                 Notification.objects.create(
-#                     user=order.user,
-#                     title="Payment Successful",
-#                     message=f"Payment for your order {order.order_number} was successful."
-#                 )
-
-#             except Order.DoesNotExist:
-#                 logger.error(f"Stripe session ID {session_id} not linked to any order")
-
-#         return HttpResponse(status=200)
+# webhook
 @method_decorator(csrf_exempt, name='dispatch')
 class StripeWebhookView(APIView):
     authentication_classes = []  # public webhook
@@ -144,28 +90,41 @@ class StripeWebhookView(APIView):
         except stripe.error.SignatureVerificationError:
             return HttpResponse(status=400)
         except Exception as e:
+            logger.error(f"Stripe webhook error: {str(e)}")
             return HttpResponse(status=400)
 
-        # Payment succeeded
         if event["type"] == "checkout.session.completed":
             session = event["data"]["object"]
             session_id = session.get("id")
 
             try:
                 order = Order.objects.get(stripe_checkout_session_id=session_id)
-                
+
                 # Avoid double processing
                 if not order.is_paid:
                     order.is_paid = True
                     order.payment_status = "paid"
-                    order.order_status = "PROCESSING"  
-                    order.save(update_fields=["is_paid", "payment_status", "order_status"])
+                    order.order_status = "PROCESSING"
+                    order.estimated_delivery = timezone.now() + timedelta(days=5)
+
+                    # ✅ Save everything in one call
+                    order.save(
+                        update_fields=[
+                            "is_paid",
+                            "payment_status",
+                            "order_status",
+                            "estimated_delivery",
+                        ]
+                    )
 
                     # Notify customer
                     Notification.objects.create(
                         user=order.user,
                         title="Payment Successful",
-                        message=f"Payment for your order {order.order_number} was successful. Your order is now processing."
+                        message=(
+                            f"Payment for your order {order.order_number} was successful. "
+                            f"Estimated delivery: {order.estimated_delivery.strftime('%Y-%m-%d')}"
+                        ),
                     )
 
             except Order.DoesNotExist:

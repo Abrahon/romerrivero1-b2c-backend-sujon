@@ -5,6 +5,9 @@ from datetime import timedelta
 from dotenv import load_dotenv
 import dj_database_url 
 from decouple import config
+import dj_database_url
+import os
+
 # Load environment variables from the .env file
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(os  .path.join(BASE_DIR, '.env'))
@@ -86,8 +89,6 @@ DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 #     )
 # }
 
-import dj_database_url
-import os
 
 DATABASES = {
     'default': dj_database_url.config(
@@ -207,26 +208,6 @@ SOCIALACCOUNT_PROVIDERS  = {
     }
 }
 
-# facebook 
-# SOCIALACCOUNT_PROVIDERS = {
-#     "google": {
-#         "SCOPE": ["profile", "email"],
-#         "AUTH_PARAMS": {"access_type": "online"},
-#     },
-#     "facebook": {
-#         "METHOD": "oauth2",
-#         "SCOPE": ["email", "public_profile"],
-#         "AUTH_PARAMS": {"auth_type": "reauthenticate"},
-#         "FIELDS": [
-#             "id",
-#             "email",
-#             "name",
-#             "first_name",
-#             "last_name",
-#             "picture",
-#         ],
-#     },
-# }
 
 
 
@@ -258,15 +239,6 @@ REST_FRAMEWORK = {
      'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
 }
 
-# REST_FRAMEWORK = {
-#     'DEFAULT_AUTHENTICATION_CLASSES': [
-#         'rest_framework.authentication.SessionAuthentication',
-#         'rest_framework.authentication.TokenAuthentication',
-#     ],
-#     'DEFAULT_PERMISSION_CLASSES': [
-#         'rest_framework.permissions.IsAuthenticated',
-#     ]
-# }
 
 
 SIMPLE_JWT = {

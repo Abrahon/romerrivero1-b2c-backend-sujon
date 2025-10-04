@@ -12,6 +12,7 @@ from .views import (
     TrainingDataDetailView,
     ChatQueryView,
     ChatBotQueryStatsView,
+    ChatBotQueryListView,
 )
  
 
@@ -34,6 +35,7 @@ urlpatterns = [
     path('train_data/', TrainingDataListCreateView.as_view(), name='train-data-list-create'),
     path('train_data/<int:id>/', TrainingDataDetailView.as_view(), name='train-data-detail'),
     path('query/', ChatQueryView.as_view(), name='chat-query'),
-    path('history/', ChatBotQueryStatsView.as_view(), name='chat-history'),
+    path('history/', ChatBotQueryListView.as_view(), name='chat-history'),
+    path('admin/history/', ChatBotQueryStatsView.as_view(), name='chat-history'),
 
  ]

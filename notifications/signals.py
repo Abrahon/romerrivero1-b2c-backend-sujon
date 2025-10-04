@@ -51,20 +51,3 @@ def message_notification(sender, instance, created, **kwargs):
         message = f"Message from {instance.sender.email}: {instance.content[:100]}"
         send_real_time_notification(user=instance.receiver, title=title, message=message, notification_type="MESSAGE")
 
-
-# # ---------------------- Coupon Usage Notification ----------------------
-# @receiver(post_save, sender=CouponUsage)
-# def coupon_notification(sender, instance, created, **kwargs):
-#     if created:
-#         title = f"Coupon Used: {instance.coupon.code}"
-#         message = f"User {instance.user.email} applied coupon {instance.coupon.code}, Discount: {instance.discount_amount}"
-#         send_real_time_notification(user=instance.user, title=title, message=message, notification_type="COUPON")
-
-
-# # ---------------------- Payment Notification ----------------------
-# @receiver(post_save, sender=Payment)
-# def payment_notification(sender, instance, created, **kwargs):
-#     if created and instance.status == "success":
-#         title = f"Payment Successful: {instance.order.order_number}"
-#         message = f"Payment of {instance.amount} received for Order {instance.order.order_number}"
-#         send_real_time_notification(user=instance.order.user, title=title, message=message, notification_type="PAYMENT")

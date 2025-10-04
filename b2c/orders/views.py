@@ -2,20 +2,17 @@ from decimal import Decimal
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-
 from rest_framework import generics, filters, status, permissions
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 # b2c/orders/views.py
 from rest_framework import generics, permissions, status
-from rest_framework.response import Response
 from .models import Order
 from .serializers import AdminOrderStatusUpdateSerializer
-from notifications.models import Notification  # if you want to notify user
+from notifications.models import Notification  
 from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth import get_user_model
-from rest_framework import generics, filters
 from rest_framework.permissions import IsAdminUser
 from .serializers import OrderListSerializer
 # Models
@@ -25,6 +22,17 @@ from b2c.products.models import Products
 from b2c.orders.models import Order, OrderItem, OrderTracking
 from b2c.coupons.models import Coupon, CouponRedemption
 from notifications.models import Notification
+from datetime import timedelta
+from django.core.mail import send_mail
+from django.conf import settings
+from django.db import transaction
+from django.utils import timezone
+from decimal import Decimal
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
+from datetime import timedelta
 
 # Serializers
 from b2c.orders.serializers import (
@@ -39,14 +47,14 @@ User = get_user_model()
 
 class OrderListView(generics.ListAPIView):
     serializer_class = OrderDetailSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser] 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["order_status", "payment_status"]
     search_fields = ["order_number", "items__product__title"]
     ordering_fields = ["created_at", "total_amount"]
 
     def get_queryset(self):
-        return Order.objects.filter(user=self.request.user).select_related("shipping_address").prefetch_related("items__product").order_by("-created_at")
+        return Order.objects.all().select_related("shipping_address").prefetch_related("items__product").order_by("-created_at")
 
 
 
@@ -60,6 +68,7 @@ class PlaceOrderView(APIView):
         shipping_id = request.data.get("shipping_id")
         cart_item_ids = request.data.get("cart_item_ids", [])
         coupon_code = request.data.get("coupon_code")
+        payment_method = request.data.get("payment_method", "COD")
 
         if not shipping_id or not cart_item_ids:
             return Response({"error": "shipping_id and cart_item_ids are required"}, status=400)
@@ -69,6 +78,7 @@ class PlaceOrderView(APIView):
         if not cart_items.exists():
             return Response({"error": "Selected cart items not found"}, status=400)
 
+        # Step 1: Create order (empty amounts first)
         order = Order.objects.create(
             user=user,
             shipping_address=shipping,
@@ -77,13 +87,14 @@ class PlaceOrderView(APIView):
             final_amount=Decimal("0.00"),
             payment_status="pending",
             order_status="PENDING",
+            payment_method=payment_method
         )
 
         total_amount = Decimal("0.00")
         discounted_amount = Decimal("0.00")
         final_amount = Decimal("0.00")
 
-        # First, calculate total_amount and discounted_amount per product
+        # Step 2: Calculate totals & create items
         for item in cart_items:
             product = item.product
             quantity = item.quantity
@@ -92,7 +103,7 @@ class PlaceOrderView(APIView):
                 transaction.set_rollback(True)
                 return Response({"error": f"Only {product.available_stock} items available for {product.title}."}, status=400)
 
-            # Use discounted_price if exists, else product.price
+            # Use discounted price if exists
             product_price = Decimal(str(getattr(product, "discounted_price", product.price)))
 
             OrderItem.objects.create(
@@ -105,14 +116,14 @@ class PlaceOrderView(APIView):
             total_amount += Decimal(str(product.price)) * quantity
             discounted_amount += product_price * quantity
 
-            # Update stock
+            # Reduce stock
             product.available_stock -= quantity
             product.save(update_fields=["available_stock"])
 
         # Base final amount = discounted_amount
         final_amount = discounted_amount
 
-        # Apply coupon if provided
+        # Step 3: Apply coupon if any
         coupon = None
         if coupon_code:
             try:
@@ -123,16 +134,14 @@ class PlaceOrderView(APIView):
                 if coupon.valid_to and coupon.valid_to < now:
                     return Response({"error": "Coupon has expired"}, status=400)
 
-                # Apply coupon to each product price
+                # Apply coupon
                 temp_final = Decimal("0.00")
                 for item in cart_items:
                     product_price = Decimal(str(getattr(item.product, "discounted_price", item.product.price)))
-
                     if coupon.discount_type == "percentage":
                         product_price -= product_price * Decimal(str(coupon.discount_value)) / Decimal("100")
-                    else:  # fixed
+                    else:
                         product_price -= Decimal(str(coupon.discount_value))
-
                     temp_final += max(product_price * item.quantity, Decimal("0.00"))
 
                 final_amount = max(temp_final, Decimal("0.00"))
@@ -141,19 +150,44 @@ class PlaceOrderView(APIView):
             except Coupon.DoesNotExist:
                 return Response({"error": "Invalid coupon code"}, status=400)
 
-        # Prevent checkout if final_amount <= 0
         if final_amount <= 0:
             return Response({"error": "Final order amount is 0 or negative, cannot proceed to checkout"}, status=400)
 
-        # Save order totals
+        # Step 4: Save totals
         order.total_amount = total_amount
         order.discounted_amount = discounted_amount
         order.final_amount = final_amount
         order.coupon = coupon
-        order.save(update_fields=["total_amount", "discounted_amount", "final_amount", "coupon"])
 
-        # Clear cart
+        # COD orders get delivery date immediately
+        if payment_method == "COD":
+            order.estimated_delivery = timezone.now() + timedelta(days=5)
+
+        order.save(update_fields=["total_amount", "discounted_amount", "final_amount", "coupon", "estimated_delivery"])
+
+        # Step 5: Clear cart
         cart_items.delete()
+
+        # Step 6: Create tracking entry
+        OrderTracking.objects.create(
+            order=order,
+            status="PENDING",
+            note="Order placed by customer"
+        )
+
+        # Step 7: Send confirmation email (correct totals now)
+        send_mail(
+            subject=f"Order Confirmation - {order.order_number}",
+            message=(
+                f"Hello {user.email},\n\n"
+                f"Your order {order.order_number} has been confirmed.\n"
+                f"Total Amount: {order.final_amount}\n\n"
+                "Thank you for shopping with us!"
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
 
         return Response({
             "success": "Order placed successfully",
@@ -162,8 +196,10 @@ class PlaceOrderView(APIView):
             "total_amount": str(total_amount),
             "discounted_amount": str(discounted_amount),
             "final_amount": str(final_amount),
-            "coupon_code": coupon.code if coupon else None
+            "coupon_code": coupon.code if coupon else None,
+            "estimated_delivery": order.estimated_delivery
         }, status=201)
+
 
 # order details views
 class OrderDetailView(generics.RetrieveAPIView):
@@ -174,8 +210,7 @@ class OrderDetailView(generics.RetrieveAPIView):
         return Order.objects.filter(user=self.request.user).prefetch_related("items__product")
 
 
-
-
+# order tracking by order id 
 class OrderTrackingView(generics.ListAPIView):
     serializer_class = OrderTrackingSerializer
     permission_classes = [IsAuthenticated]
@@ -199,14 +234,7 @@ class OrderTrackingView(generics.ListAPIView):
         return order.tracking_history.all().order_by("created_at")
 
 
-
-
-from rest_framework import generics, permissions
-from rest_framework.response import Response
-from .models import Order, OrderTracking
-from .serializers import OrderTrackingSerializer
-from django.shortcuts import get_object_or_404
-
+# order tracking by order number 
 class OrderTrackingView(generics.RetrieveAPIView):
     serializer_class = OrderTrackingSerializer
     permission_classes = [permissions.IsAuthenticated]  # Only the user can access their orders
@@ -235,9 +263,7 @@ class OrderTrackingView(generics.RetrieveAPIView):
 
 
 
-
-
-
+# order list filter 
 class OrderListFilter(generics.ListAPIView):
     """
     List all orders with searching and filtering.
@@ -256,7 +282,7 @@ class OrderListFilter(generics.ListAPIView):
 
 
 
-
+# admin update status 
 class AdminUpdateOrderStatusView(generics.UpdateAPIView):
     serializer_class = AdminOrderStatusUpdateSerializer
     permission_classes = [permissions.IsAdminUser]
@@ -283,6 +309,7 @@ class AdminUpdateOrderStatusView(generics.UpdateAPIView):
         }, status=status.HTTP_200_OK)
 
 
+
 class BuyNowView(generics.CreateAPIView):
     serializer_class = BuyNowSerializer
 
@@ -306,13 +333,12 @@ class BuyNowView(generics.CreateAPIView):
 
 
 
-
 class AdminOrderListView(generics.ListAPIView):
     """
     Admin view to list all orders with search, filter, and ordering.
     """
     serializer_class = OrderDetailSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["order_status", "payment_status", "payment_method", "is_paid"]
     search_fields = ["order_number", "user__email", "items__product__title"]

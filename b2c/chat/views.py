@@ -1,11 +1,31 @@
-from rest_framework import generics, permissions, status
+from django.shortcuts import get_object_or_404
+from django.contrib.auth import get_user_model
+from django.db.models import Max, Q, F
+from django.db.models.functions import Coalesce
+from rest_framework import generics, permissions, serializers, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
-from accounts.permissions import IsAdminUser
-from .models import Message
-from .serializers import MessageSerializer
+import requests
 
+from accounts.models import User
+from accounts.permissions import IsAdminUser
+from .models import Message, TrainData, ChatBotQuery
+from .serializers import (
+    MessageSerializer,
+    UserListSerializer,
+    TrainDataSerializer,
+    ChatBotQuerySerializer,
+    ChatQuerySerializer,
+)
+from django.db.models import Q
+from rest_framework import generics
+from rest_framework.permissions import IsAdminUser
+from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
+from .serializers import ChatBotQuerySerializer
+
+
+AI_BASE_URL = "http://127.0.0.1:8001"  
 
 # # Buyer sends message
 class SendMessageView(generics.CreateAPIView):
@@ -16,269 +36,6 @@ class SendMessageView(generics.CreateAPIView):
         receiver_id = self.request.data.get("receiver")
         serializer.save(sender=self.request.user, receiver_id=receiver_id)
 
-
-# # List messages
-# class MessageListView(generics.ListAPIView):
-#     serializer_class = MessageSerializer
-#     permission_classes = [permissions.IsAuthenticated]
-
-#     def get_queryset(self):
-#         user = self.request.user
-#         if user.is_staff:
-#             return Message.objects.all()
-#         return Message.objects.filter(sender=user) | Message.objects.filter(receiver=user)
-
-
-# # Admin marks message as read
-# class MarkMessageReadView(APIView):
-#     permission_classes = [IsAdminUser]
-
-#     def patch(self, request, pk):
-#         message = get_object_or_404(Message, id=pk)
-#         message.is_read = True
-#         message.save(update_fields=['is_read'])
-#         return Response({"status": "marked as read"}, status=status.HTTP_200_OK)
-
-
-# from django.contrib.auth import get_user_model
-
-# User = get_user_model()
-
-# class ReplyMessageView(APIView):
-#     """
-#     Admin replies to the latest message from a user.
-#     POST /api/admin/messages/reply/<user_id>/
-#     """
-#     permission_classes = [IsAdminUser]
-
-#     def post(self, request, user_id):
-#         # Get the user
-#         user = get_object_or_404(User, id=user_id)
-
-#         # Get the latest message from this user (ignore receiver field)
-#         parent_message = (
-#             Message.objects.filter(sender=user)
-#             .order_by('-timestamp')  # timestamp field from your model
-#             .first()
-#         )
-
-#         if not parent_message:
-#             return Response(
-#                 {"error": "This user has not sent any messages yet."},
-#                 status=status.HTTP_404_NOT_FOUND
-#             )
-
-#         # Get content from request
-#         content = request.data.get("content")
-#         if not content or content.strip() == "":
-#             return Response(
-#                 {"error": "Message content is required."},
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-
-#         # # Create reply message
-#         # reply = Message.objects.create(
-#         #     sender=request.user,   # Admin
-#         #     receiver=user,         # Original user
-#         #     content=content.strip(),
-#         #     parent=parent_message
-#         # )
-
-#         # serializer = MessageSerializer(reply)
-#         # return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-
-# # Delete message
-# class DeleteMessageView(APIView):
-#     permission_classes = [permissions.IsAuthenticated]
-
-#     def delete(self, request, pk):
-#         message = get_object_or_404(Message, id=pk)
-#         if not (request.user.is_staff or message.sender == request.user):
-#             return Response({"error": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
-
-#         message.delete()
-#         return Response({"status": "Message deleted"}, status=status.HTTP_200_OK)
-
-
-# class UpdateMessageView(APIView):
-#     permission_classes = [permissions.IsAuthenticated]
-
-#     def patch(self, request, pk):
-#         message = get_object_or_404(Message, id=pk)
-
-#         # Only sender or receiver can update
-#         if not (request.user == message.sender or request.user == message.receiver):
-#             return Response({"error": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
-
-#         content = request.data.get('content')
-#         if not content:
-#             return Response({"error": "Message content is required."}, status=status.HTTP_400_BAD_REQUEST)
-
-#         message.content = content
-#         message.save(update_fields=['content'])
-#         serializer = MessageSerializer(message)
-#         return Response(serializer.data, status=status.HTTP_200_OK)
-    
-# class AdminMessageListView(generics.ListAPIView):
-#     serializer_class = MessageSerializer
-#     permission_classes = [IsAdminUser]
-
-#     def get_queryset(self):
-#         return Message.objects.all()
-    
-# from .serializers import ChatBotSerializer
-# from .models import ChatBot
-# class ChatBotList(generics.ListAPIView):
-#     permission_classes = [permissions.IsAuthenticated]
-#     serializer_class = ChatBotSerializer
-#     queryset = ChatBot.objects.all()
-
-
-# class ChatBotCreateView(APIView):
-#     permission_classes = [permissions.IsAuthenticated]
-
-#     def post(self, request):
-#         # Get 'query' from request body
-#         query = request.data.get("query")
-#         if not query:
-#             return Response({"error": "Query is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-
-
-#         # Create ChatBot entry
-#         chatbot = ChatBot.objects.create(user=request.user, query=query)
-
-
-#         # Serialize and return
-#         serializer = ChatBotSerializer(chatbot)
-#         return Response(serializer.data, status=status.HTTP_201_CREATED)
-from rest_framework import generics, permissions, status
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
-from django.contrib.auth import get_user_model
-from rest_framework import serializers
-from .models import Message
-from .serializers import MessageSerializer
-from accounts.permissions import IsAdminUser
-from .serializers import MessageSerializer,UserListSerializer
-
-# User = get_user_model()
-
-# # # -------------------- User sends message --------------------
-# # class SendMessageView(generics.CreateAPIView):
-# #     serializer_class = MessageSerializer
-# #     permission_classes = [permissions.IsAuthenticated]
-
-# #     def perform_create(self, serializer):
-# #         receiver_id = self.request.data.get("receiver")
-# #         serializer.save(sender=self.request.user, receiver_id=receiver_id)
-
-
-# # -------------------- List messages for user --------------------
-# class MessageListView(generics.ListAPIView):
-#     serializer_class = MessageSerializer
-#     permission_classes = [permissions.IsAuthenticated]
-
-#     def get_queryset(self):
-#         user = self.request.user
-#         # For admin, show all messages
-#         if user.is_staff:
-#             return Message.objects.all()
-#         # Normal user: messages where user is sender or receiver
-#         return Message.objects.filter(sender=user) | Message.objects.filter(receiver=user)
-    
-# # user list 
-# class UserListView(generics.ListAPIView):
-#     serializer_class = UserListSerializer
-#     permission_classes = [IsAdminUser]
-    
-#     def get_queryset(self):
-#         # Return all users except the admin themselves
-#         return User.objects.exclude(id=self.request.user.id)
-    
-
-
-    
-# # -------------------- Admin sees messages for a specific user --------------------
-# class AdminUserMessagesView(generics.ListAPIView):
-#     serializer_class = MessageSerializer
-#     permission_classes = [IsAdminUser]
-
-#     def get_queryset(self):
-#         user_id = self.kwargs['user_id']
-#         user = get_object_or_404(User, id=user_id)
-#         # All messages between admin and this user
-#         return Message.objects.filter(sender__in=[user, self.request.user],
-#                                       receiver__in=[user, self.request.user]).order_by('timestamp')
-
-
-# # -------------------- Admin sends message to a user --------------------
-# class AdminSendMessageView(generics.CreateAPIView):
-#     serializer_class = MessageSerializer
-#     permission_classes = [IsAdminUser]
-
-#     def perform_create(self, serializer):
-#         user_id = self.request.data.get("receiver")
-#         if not user_id:
-#             raise serializers.ValidationError({"receiver": "User ID is required"})
-#         serializer.save(sender=self.request.user, receiver_id=user_id)
-
-
-# # -------------------- Mark message read --------------------
-# class MarkMessageReadView(APIView):
-#     permission_classes = [IsAdminUser]
-
-#     def patch(self, request, pk):
-#         message = get_object_or_404(Message, id=pk)
-#         message.is_read = True
-#         message.save(update_fields=['is_read'])
-#         return Response({"status": "marked as read"}, status=status.HTTP_200_OK)
-
-
-# # -------------------- Delete message --------------------
-# class DeleteMessageView(APIView):
-#     permission_classes = [permissions.IsAuthenticated]
-
-#     def delete(self, request, pk):
-#         message = get_object_or_404(Message, id=pk)
-#         if not (request.user.is_staff or message.sender == request.user):
-#             return Response({"error": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
-#         message.delete()
-#         return Response({"status": "Message deleted"}, status=status.HTTP_200_OK)
-
-
-# # -------------------- Update message --------------------
-# class UpdateMessageView(APIView):
-#     permission_classes = [permissions.IsAuthenticated]
-
-#     def patch(self, request, pk):
-#         message = get_object_or_404(Message, id=pk)
-#         if not (request.user == message.sender or request.user == message.receiver):
-#             return Response({"error": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
-
-#         content = request.data.get('content')
-#         if not content:
-#             return Response({"error": "Message content is required."}, status=status.HTTP_400_BAD_REQUEST)
-
-#         message.content = content
-#         message.save(update_fields=['content'])
-#         serializer = MessageSerializer(message)
-#         return Response(serializer.data, status=status.HTTP_200_OK)
-
-# b2c/chat/views.py
-from rest_framework import generics, permissions, status
-from rest_framework.response import Response
-from django.db.models import Q, Max
-from django.shortcuts import get_object_or_404
-from rest_framework.views import APIView
-from accounts.models import User
-from .models import Message
-from .serializers import MessageSerializer, UserListSerializer
-from accounts.permissions import IsAdminUser
-from django.db.models import Max, Q, F
-from django.db.models.functions import Coalesce
 
 
 # -------------------- Admin: list of users with conversations --------------------
@@ -310,13 +67,6 @@ class UserConversationListView(generics.ListAPIView):
 
 
 
-from rest_framework import generics, permissions
-from django.db.models import Q
-from django.shortcuts import get_object_or_404
-from .models import Message, User
-from .serializers import MessageSerializer
-
-
 class UserConversationView(generics.ListCreateAPIView):
     serializer_class = MessageSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -336,17 +86,9 @@ class UserConversationView(generics.ListCreateAPIView):
         """
         serializer.save(sender=self.request.user)
 
+
+
 # user convirsession
-
-
-from rest_framework import generics, permissions
-from django.shortcuts import get_object_or_404
-from django.db.models import Q
-from accounts.models import User
-from b2c.chat.models import Message
-from b2c.chat.serializers import MessageSerializer
-
-
 class AdminConversationView(generics.ListAPIView):
     serializer_class = MessageSerializer
     permission_classes = [permissions.IsAdminUser]
@@ -412,6 +154,7 @@ class MyConversationListView(generics.ListAPIView):
 
         return qs
 
+
 # -------------------- Admin sends message to user --------------------
 class AdminSendMessageView(generics.CreateAPIView):
     serializer_class = MessageSerializer
@@ -445,18 +188,8 @@ class UpdateDeleteMessageView(generics.RetrieveUpdateDestroyAPIView):
         instance.delete()
 
 
-import requests
-from rest_framework import generics, status
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
-from .models import TrainData, ChatBotQuery
-from .serializers import TrainDataSerializer, ChatBotQuerySerializer, ChatQuerySerializer
 
-
-AI_BASE_URL = "http://127.0.0.1:8001"  # your FastAPI AI model
-
-
+# Chatbot 
 # -------------------------------
 # Training Data Views
 # -------------------------------
@@ -550,44 +283,73 @@ class ChatQueryView(APIView):
 # -------------------------------
 # Chat History
 # -------------------------------
-# class ChatBotQueryListView(generics.ListAPIView):
-#     serializer_class = ChatBotQuerySerializer
-#     pagination_class = None
-
-#     def get_queryset(self):
-#         return ChatBotQuery.objects.filter(user=self.request.user).order_by("-created_at")
-
-# dashboard get
-
-class ChatBotQueryStatsView(generics.ListAPIView):
+class ChatBotQueryListView(generics.ListAPIView):
     serializer_class = ChatBotQuerySerializer
     pagination_class = None
 
     def get_queryset(self):
-        # Fetch all chat history for the logged-in user
         return ChatBotQuery.objects.filter(user=self.request.user).order_by("-created_at")
+
+
+
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+class ChatBotQueryStatsView(generics.ListAPIView):
+    serializer_class = ChatBotQuerySerializer
+    permission_classes = [IsAdminUser]
+    pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        queryset = ChatBotQuery.objects.all().order_by("-created_at")
+
+        # Search by query text or AI response
+        search = self.request.query_params.get("search")
+        if search:
+            queryset = queryset.filter(
+                Q(query__icontains=search) | Q(ai_response__icontains=search)
+            )
+
+        # Filter by user email
+        user_email = self.request.query_params.get("user_email")
+        if user_email:
+            queryset = queryset.filter(user__email__icontains=user_email)
+
+        return queryset
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
 
-        # Total conversations
+        # Pagination
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+        else:
+            serializer = self.get_serializer(queryset, many=True)
+
+        # Stats (use the full queryset, not just the paginated page)
         total_conversations = queryset.count()
-
-        # Example logic for qualified leads:
-        qualified_leads = queryset.filter(ai_response__icontains="qualified").count()
-
-        # Conversation rate
+        qualified_leads = queryset.filter(
+            ai_response__iregex=r'qualified|interested|yes'
+        ).count()
         conversation_rate = (qualified_leads / total_conversations * 100) if total_conversations > 0 else 0
 
-        # Recent conversations (last 5)
+        # Recent conversations (last 5 overall)
         recent_conversations = queryset[:5]
         recent_serializer = self.get_serializer(recent_conversations, many=True)
 
-        return Response({
+        response_data = {
             "total_conversations": total_conversations,
             "qualified_leads": qualified_leads,
             "conversation_rate": round(conversation_rate, 2),
             "recent_conversations": recent_serializer.data,
+        }
+
+        # Include paginated results
+        return self.get_paginated_response({
+            **response_data,
             "all_chat_history": serializer.data
         })

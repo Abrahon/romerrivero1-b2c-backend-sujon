@@ -1,44 +1,24 @@
-from django.db.models import Sum, Count
-from django.db.models.functions import TruncWeek, TruncMonth, TruncYear
-from rest_framework.views import APIView
-from rest_framework import status, permissions
-from datetime import datetime, timedelta
-from b2c.orders.models import Order, OrderItem
-from b2c.reviews.models import Review
-from b2c.products.models import Products
-from visitors.models import Visitor
-from datetime import timedelta
-from django.utils.timezone import now
-from accounts. models import User
-from rest_framework import status
-from django.db.models import Count, Sum, F
+# b2c/dashboard/views.py
+
+from datetime import datetime, timedelta, date
+from decimal import Decimal
 from collections import Counter
-import phonenumbers
-from rest_framework.response import Response
-from rest_framework import status
-from django.db.models import Count, Sum
+
 from django.utils.timezone import now
-from datetime import timedelta, date
-import phonenumbers
-from django.contrib.auth import get_user_model
-
-User = get_user_model()
-
-from django.contrib.auth import get_user_model
-from b2c.orders.models import Order
-from b2c.user_profile.models import UserProfile
-
-# from b2c.sales.models import Sale  
-
-from datetime import datetime, timedelta
-from django.db.models import Sum, Count
+from django.db.models import Sum, Count, F
 from django.db.models.functions import TruncWeek, TruncMonth, TruncYear
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
 
+from accounts.models import User
 from b2c.orders.models import Order, OrderItem
-from decimal import Decimal
+from b2c.reviews.models import Review
+from b2c.products.models import Products
+from visitors.models import Visitor
+from b2c.user_profile.models import UserProfile
+import phonenumbers
 
 
 class DashboardOverview(APIView):
@@ -47,113 +27,99 @@ class DashboardOverview(APIView):
     def get(self, request):
         try:
             period = request.query_params.get("period", "weekly").lower()
-            now = datetime.now()
+            current_time = now()
 
-            # Base querysets
+            # Base Querysets
             orders = Order.objects.all()
             order_items = OrderItem.objects.select_related("product").all()
+            users = User.objects.filter(is_staff=False)
 
-            # Totals
+            # Total metrics
             total_income = orders.aggregate(total=Sum("total_amount"))["total"] or Decimal("0.00")
             total_sales = order_items.count()
-            total_new_customers = User.objects.filter(is_staff=False).count()
+            total_new_customers = users.count()
             total_orders_completed = orders.filter(order_status="DELIVERED").count()
 
-            # Select truncate function + interval
+            # Choose truncate function
             if period == "weekly":
                 truncate_func = TruncWeek
-                interval = timedelta(weeks=1)
                 periods = 10
             elif period == "monthly":
                 truncate_func = TruncMonth
-                interval = timedelta(days=30)
-                periods = 10
+                periods = 12
             elif period == "yearly":
                 truncate_func = TruncYear
-                interval = timedelta(days=365)
-                periods = 10
+                periods = 5
             else:
-                return Response(
-                    {"error": "Invalid period. Use weekly, monthly, or yearly."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                return Response({"error": "Invalid period. Use weekly, monthly, or yearly."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Revenue from DB (grouped)
-            db_data = (
-                orders.filter(created_at__lte=now)
-                .annotate(period=truncate_func("created_at"))
-                .values("period")
-                .annotate(total_revenue=Sum("total_amount"))
-                .order_by("period")
+            # Revenue grouped by period
+            revenue_data = (
+                orders.annotate(period=truncate_func("created_at"))
+                      .values("period")
+                      .annotate(total_revenue=Sum("total_amount"))
+                      .order_by("period")
             )
-            revenue_map = {
-                (d["period"].date() if hasattr(d["period"], "date") else d["period"]): d["total_revenue"]
-                for d in db_data
-            }
+            revenue_map = {d["period"].date(): d["total_revenue"] for d in revenue_data}
 
-            # Completed orders from DB (grouped)
+            # Completed orders grouped by period
             completed_data = (
-                orders.filter(order_status="DELIVERED", created_at__lte=now)
-                .annotate(period=truncate_func("created_at"))
-                .values("period")
-                .annotate(completed_orders=Count("id"))
-                .order_by("period")
+                orders.filter(order_status="DELIVERED")
+                      .annotate(period=truncate_func("created_at"))
+                      .values("period")
+                      .annotate(completed_orders=Count("id"))
+                      .order_by("period")
             )
-            completed_map = {
-                (d["period"].date() if hasattr(d["period"], "date") else d["period"]): d["completed_orders"]
-                for d in completed_data
-            }
+            completed_map = {d["period"].date(): d["completed_orders"] for d in completed_data}
 
-            # Visitors trend
+            # Visitors grouped by period
             visitor_data = (
-                Visitor.objects.filter(last_visit__lte=now)
-                .annotate(period=truncate_func("last_visit"))
-                .values("period")
-                .annotate(visitors_count=Count("id"))
-                .order_by("period")
+                Visitor.objects.annotate(period=truncate_func("last_visit"))
+                               .values("period")
+                               .annotate(visitors_count=Count("id"))
+                               .order_by("period")
             )
-            visitor_map = {
-                (d["period"].date() if hasattr(d["period"], "date") else d["period"]): d["visitors_count"]
-                for d in visitor_data
-            }
+            visitor_map = {d["period"].date(): d["visitors_count"] for d in visitor_data}
 
-            # Build last 10 buckets (fill missing with 0)
+            # Build trend lists
             revenue_trend = []
             visitors_trend = []
-            for i in range(periods):
-                bucket_start = now - (interval * (periods - i - 1))
 
+            for i in range(periods):
                 if period == "weekly":
+                    bucket_start = current_time - (i * 7 * timedelta(days=1))
                     bucket_start = bucket_start - timedelta(days=bucket_start.weekday())
                 elif period == "monthly":
+                    bucket_start = current_time.replace(day=1) - i * timedelta(days=30)
                     bucket_start = bucket_start.replace(day=1)
                 elif period == "yearly":
+                    bucket_start = current_time.replace(month=1, day=1) - i * timedelta(days=365)
                     bucket_start = bucket_start.replace(month=1, day=1)
 
                 key = bucket_start.date()
                 revenue_trend.append({
-                    "period": bucket_start,
+                    "period": bucket_start.strftime("%Y-%m-%d"),
                     "total_revenue": float(revenue_map.get(key, 0)),
                     "orders_completed": int(completed_map.get(key, 0)),
                 })
                 visitors_trend.append({
-                    "period": bucket_start,
+                    "period": bucket_start.strftime("%Y-%m-%d"),
                     "visitors": int(visitor_map.get(key, 0)),
                 })
 
             # Recent activity
             recent_reviews = Review.objects.order_by("-created_at")[:5].values(
-                "id", "product__title", "user__email", "rating", "comment", "created_at"
+                "id", "product__title", "user__name", "user__email", "rating", "comment", "created_at"
             )
             recent_orders = orders.order_by("-created_at")[:5].values(
-                "id", "order_number", "user__email", "total_amount", "order_status", "created_at"
+                "id", "order_number", "user__name", "user__email", "total_amount", "order_status", "created_at"
             )
 
             # Best-selling products
             best_selling_products = (
                 OrderItem.objects.values("product__id", "product__title")
-                .annotate(total_sold=Sum("quantity"))
-                .order_by("-total_sold")[:5]
+                                 .annotate(total_sold=Sum("quantity"))
+                                 .order_by("-total_sold")[:5]
             )
 
             response_data = {
@@ -161,8 +127,8 @@ class DashboardOverview(APIView):
                 "total_sales": total_sales,
                 "total_new_customers": total_new_customers,
                 "total_orders_completed": total_orders_completed,
-                "revenue_trend": revenue_trend,
-                "visitors_trend": visitors_trend,
+                "revenue_trend": revenue_trend[::-1],   # oldest -> newest
+                "visitors_trend": visitors_trend[::-1],
                 "recent_activity": {
                     "recent_orders": list(recent_orders),
                     "recent_reviews": list(recent_reviews),
@@ -174,6 +140,7 @@ class DashboardOverview(APIView):
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 

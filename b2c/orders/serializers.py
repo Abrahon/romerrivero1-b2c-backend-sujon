@@ -1,7 +1,4 @@
 
-from decimal import Decimal
-from django.db import transaction
-from rest_framework import serializers
 from b2c.cart.models import CartItem
 from b2c.products.models import Products
 from b2c.checkout.models import Shipping
@@ -10,9 +7,6 @@ from b2c.checkout.serializers import ShippingSerializer
 from b2c.coupons.models import Coupon
 from notifications.models import Notification
 from django.contrib.auth import get_user_model
-from rest_framework import serializers
-from django.db import transaction
-from decimal import Decimal
 from b2c.products.models import Products
 from b2c.checkout.models import Shipping
 from b2c.orders.models import Order, OrderItem
@@ -24,7 +18,6 @@ from notifications.models import Notification
 from django.contrib.auth import get_user_model
 from .enums import  PaymentMethodChoices
 from .models import Order, OrderStatus
-from rest_framework import serializers
 from decimal import Decimal
 from django.db import transaction
 from django.shortcuts import get_object_or_404
@@ -36,17 +29,11 @@ from b2c.coupons.models import Coupon, CouponRedemption
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from .models import Order, OrderItem
+from b2c.products.serializers import ProductSerializer 
+
+
 User = get_user_model()
 
-
-from rest_framework import serializers
-from decimal import Decimal
-from .models import OrderItem
-
-from rest_framework import serializers
-from decimal import Decimal
-from .models import OrderItem
-from b2c.products.serializers import ProductSerializer 
 
 class OrderItemSerializer(serializers.ModelSerializer):
     product = ProductSerializer(read_only=True)
@@ -118,7 +105,8 @@ class OrderDetailSerializer(serializers.ModelSerializer):
     # tracking_history = OrderTrackingSerializer(many=True, read_only=True)
     total_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     discounted_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
-    final_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True) 
+    final_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    estimated_delivery = serializers.DateTimeField(read_only=True)
 
     class Meta:
         model = Order
@@ -126,13 +114,13 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             'id', 'order_number', 'user', 'product', 'shipping_address',
             'items', 'tracking_history','coupon', 'total_amount', 'discounted_amount','final_amount',
             'is_paid', 'payment_status', 'order_status',
-            'stripe_payment_intent', 'stripe_checkout_session_id', 'created_at'
+            'stripe_payment_intent', 'stripe_checkout_session_id', 'created_at','estimated_delivery',
         ]
         read_only_fields = [
             'user', 'order_number', 'items', 'product','tracking_history',
             'total_amount', 'discounted_amount', 'is_paid',
             'payment_status', 'order_status', 'final_amount','stripe_payment_intent',
-            'stripe_checkout_session_id', 'created_at'
+            'stripe_checkout_session_id', 'created_at','estimated_delivery',
         ]
 
 
@@ -192,7 +180,8 @@ class OrderTrackingSerializer(serializers.ModelSerializer):
 
     def get_order_items(self, obj):
         items = obj.order.items.all()  # make sure related_name='items'
-        return OrderDetailSerializer(items, many=True).data
+        return OrderDetailSerializer(items, many=True, context=self.context).data
+
 
     def get_shipping_address(self, obj):
         shipping = getattr(obj.order, 'shipping_address', None)

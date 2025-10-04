@@ -41,13 +41,8 @@ class Message(models.Model):
 
 
 class TrainData(TimeStampedModel):
-    CATEGORY_CHOICES = [
-        ("FAQ", "FAQ"),
-        ("GENERAL", "GENERAL"),
-    ]
-
     id = models.AutoField(primary_key=True)  # normal auto ID
-    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
+    category = models.CharField(max_length=100)
     context = models.CharField(max_length=255)
     question = models.TextField()
     ai_response = models.TextField()

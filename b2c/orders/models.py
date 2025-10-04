@@ -8,6 +8,7 @@ import secrets
 from common.models import TimeStampedModel
 from .enums import OrderStatus, PaymentMethodChoices,PaymentStatus
 from b2c.coupons.models import Coupon
+from datetime import timedelta
 
 class Order(TimeStampedModel):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="orders")
@@ -23,9 +24,11 @@ class Order(TimeStampedModel):
     order_status = models.CharField(max_length=20, choices=OrderStatus.choices, default=OrderStatus.PENDING)
     stripe_payment_intent = models.CharField(max_length=255, blank=True, null=True)
     stripe_checkout_session_id = models.CharField(max_length=255, blank=True, null=True)
+    estimated_delivery = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now, editable=False)
     updated_at = models.DateTimeField(auto_now=True)
-
+  
+#   order number genarete
     def __str__(self):
         return f"{self.order_number} — {self.user}"
 
@@ -35,7 +38,20 @@ class Order(TimeStampedModel):
             rnd = secrets.token_hex(3)
             self.order_number = f"ORD-{ts}-{rnd}"
         super().save(*args, **kwargs)
+        
 
+        # Set estimated delivery for paid orders or COD
+        if not self.estimated_delivery and (self.is_paid or self.payment_method == "COD"):
+            self.estimated_delivery = timezone.now() + timedelta(days=5)
+            super().save(update_fields=["estimated_delivery"])
+        
+        # if not self.estimated_delivery and (self.is_paid or self.payment_method == "COD"):
+        #     self.estimated_delivery = timezone.now() + timedelta(days=5)
+        #     super().save(update_fields=["estimated_delivery"])
+
+
+    
+    # calculate total ammount 
     def calculate_totals(self):
         """Recalculate totals from items + coupon"""
         subtotal = sum(item.line_total for item in self.items.all())
@@ -66,7 +82,7 @@ class OrderItem(models.Model):
         return (self.price or Decimal("0.00")) * self.quantity
 
 
-
+# order tracking
 class OrderTracking(TimeStampedModel):
     order = models.ForeignKey(
         Order,
