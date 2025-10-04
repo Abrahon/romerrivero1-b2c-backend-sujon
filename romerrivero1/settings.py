@@ -82,24 +82,40 @@ DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 
 # DATABASES = {
 #     'default': dj_database_url.config(
-#         # Replace this value with your local database's connection string.
-#         default='postgresql://romero_user:Bg52tJ3BJ3Yh2Nwt2gmfpkJvgqKq6L7x@dpg-d2tmeu8gjchc73a0o8bg-a.oregon-postgres.render.com/romero',
-#         conn_max_age=600
-        
+#         default=os.getenv(
+#             'DATABASE_URL',
+#             'postgresql://romero_user:Bg52tJ3BJ3Yh2Nwt2gmfpkJvgqKq6L7x@dpg-d2tmeu8gjchc73a0o8bg-a.oregon-postgres.render.com/romero'
+#         ),
+#         conn_max_age=600,
+#         ssl_require=True  
 #     )
 # }
 
 
+import os
+from decouple import config
+
 DATABASES = {
-    'default': dj_database_url.config(
-        default=os.getenv(
-            'DATABASE_URL',
-            'postgresql://romero_user:Bg52tJ3BJ3Yh2Nwt2gmfpkJvgqKq6L7x@dpg-d2tmeu8gjchc73a0o8bg-a.oregon-postgres.render.com/romero'
-        ),
-        conn_max_age=600,
-        ssl_require=True  # enforce SSL for production
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': config('DB_NAME', default='b2bb2c'),
+        'USER': config('DB_USER', default='sujon'),
+        'PASSWORD': config('DB_PASSWORD', default='1234'),
+        'HOST': config('DB_HOST', default='localhost'),
+        'PORT': config('DB_PORT', default='5432'),
+    }
 }
+
+
+
+# DATABASES = {
+#     'default': dj_database_url.config(
+#         default=f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}",
+#         conn_max_age=600,
+#         ssl_require=os.getenv('DATABASE_URL') is not None
+#     )
+# }
+
 
 
 CHANNEL_LAYERS = {
