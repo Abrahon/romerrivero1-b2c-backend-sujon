@@ -54,9 +54,6 @@ urlpatterns = [
     path('user/products/<int:id>/', UserProductDetailView.as_view(), name='user-product-detail'),
     path('user/products/search/', UserProductSearchView.as_view(), name='user-product-search'),
    
-
-
-
     # Public / Filter / Search
     # ---------------------
     # path("products/top/", TopProductsView.as_view(), name="top-products"),

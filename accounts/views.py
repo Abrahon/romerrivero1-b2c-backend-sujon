@@ -7,7 +7,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from .serializers import SignupSerializer, LoginSerializer
 from .models import User
-# from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 from django.contrib.auth.models import User
 from rest_framework.permissions import AllowAny, IsAdminUser
@@ -15,7 +14,6 @@ from rest_framework.parsers import MultiPartParser, FormParser
 User = get_user_model()  
 
 from rest_framework.permissions import IsAuthenticated
-# from django.contrib.auth import make_random_password
 
 import requests
 from django.conf import settings
