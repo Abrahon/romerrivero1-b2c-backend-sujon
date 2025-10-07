@@ -25,7 +25,11 @@ from django.utils import timezone
 from django.db.models import Avg, DecimalField
 from django.db.models.functions import Coalesce
 from rest_framework.exceptions import ValidationError
-
+from django.shortcuts import get_object_or_404
+from .models import Products, ProductStatus
+from django.db.models import Q, Avg, Value
+from rest_framework import status, permissions
+from django.db.models import Avg, FloatField
 
 logger = logging.getLogger(__name__)
 
@@ -381,15 +385,6 @@ class CategoryProductFilterPagination(PageNumberPagination):
     max_page_size = 100
 
 
-from django.db.models import Q, Avg, Value
-from django.db.models.functions import Coalesce
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status, permissions
-from .models import Products
-from .serializers import ProductSerializer
-from django.db.models import Avg, FloatField
-
 class CategoryProductFilterView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -562,6 +557,37 @@ class ProductSearchFilterView(APIView):
             "count": products.count(),
             "results": serializer.data
         }, status=status.HTTP_200_OK)
+    
+
+
+# related product view
+class RelatedProductsView(generics.ListAPIView):
+    """
+    Returns related products based on the same category
+    but excludes the current product itself.
+    """
+    serializer_class = ProductSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        product_id = self.kwargs.get("product_id")
+
+        # Get the product or raise 404
+        product = get_object_or_404(Products, id=product_id, status=ProductStatus.ACTIVE)
+
+        # Return other products in the same category, excluding the current one
+        return Products.objects.filter(
+            category=product.category,
+            status=ProductStatus.ACTIVE
+        ).exclude(id=product.id)
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True, context={"request": request})
+        return Response(serializer.data)
+
+
+
 
 import csv
 import uuid

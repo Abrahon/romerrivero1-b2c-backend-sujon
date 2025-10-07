@@ -24,7 +24,8 @@ from .views import (
     ProductSearchFilterView,
     TopProductsView,
     LimitedDealsProductListView,
-    UserProductLoadMoreView
+    UserProductLoadMoreView,
+    RelatedProductsView
 
 
     
@@ -61,6 +62,7 @@ urlpatterns = [
     path('products/filter/', CategoryProductFilterView.as_view(), name='category-product-filter'),
     path('products/search/', ProductSearchFilterView.as_view(), name='product-search-filter'),
     path('top/products/', TopProductsView.as_view(), name='top-products'),
+    path('related/products/', RelatedProductsView.as_view(), name='top-products'),
      path("user/products/load-more/", UserProductLoadMoreView.as_view(), name="user-product-load-more"),
     
 ]
