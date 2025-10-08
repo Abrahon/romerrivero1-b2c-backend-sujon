@@ -207,13 +207,31 @@ class PlaceOrderView(APIView):
 
 
 # order details views
-class OrderDetailView(generics.RetrieveAPIView):
-    permission_classes = [IsAuthenticated]
+# class OrderDetailView(generics.RetrieveAPIView):
+#     permission_classes = [IsAuthenticated]
+#     serializer_class = OrderDetailSerializer
+
+#     def get_queryset(self):
+#         return Order.objects.filter(user=self.request.user).prefetch_related("items__product")
+
+from rest_framework import generics
+from rest_framework.permissions import IsAuthenticated
+from .models import Order
+from .serializers import OrderDetailSerializer
+
+class UserOrderHistoryView(generics.ListAPIView):
+    """
+    List all orders for the authenticated user (complete order history)
+    """
     serializer_class = OrderDetailSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Order.objects.filter(user=self.request.user).prefetch_related("items__product")
-
+        # Filter all orders for the logged-in user
+        return Order.objects.filter(user=self.request.user)\
+                            .select_related("shipping_address")\
+                            .prefetch_related("items__product")\
+                            .order_by("-created_at")  # latest orders first
 
 # order tracking by order id 
 class OrderTrackingView(generics.ListAPIView):
