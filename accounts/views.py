@@ -203,6 +203,7 @@ class GoogleLoginView(APIView):
         return Response({"auth_url": google_auth_url})
 
 
+
 class GoogleCallbackView(APIView):
     permission_classes = [AllowAny]
 
@@ -254,7 +255,7 @@ class GoogleCallbackView(APIView):
         return redirect(f"{settings.FRONTEND_REDIRECT_URL}?token={jwt_token}")
     
 
-
+# google signup
 class GoogleExchangeView(APIView):
     permission_classes = [AllowAny]
 
@@ -309,3 +310,71 @@ class GoogleExchangeView(APIView):
             "refresh": str(refresh),
             "access": str(refresh.access_token),
         })
+
+class GoogleSignupView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        """
+        Sign up a user using Google OAuth code
+        """
+        code = request.data.get("code")
+        if not code:
+            return Response({"error": "Code is required"}, status=400)
+
+        # Exchange code for access token
+        token_url = "https://oauth2.googleapis.com/token"
+        data = {
+            "code": unquote(code),
+            "client_id": settings.GOOGLE_CLIENT_ID,
+            "client_secret": settings.GOOGLE_CLIENT_SECRET,
+            "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+            "grant_type": "authorization_code",
+        }
+
+        token_response = requests.post(token_url, data=data)
+        if token_response.status_code != 200:
+            return Response({"error": "Failed to get token", "details": token_response.json()}, status=400)
+
+        token_data = token_response.json()
+        access_token = token_data.get("access_token")
+        if not access_token:
+            return Response({"error": "Invalid access token"}, status=400)
+
+        # Fetch user info from Google
+        user_info_url = "https://www.googleapis.com/oauth2/v3/userinfo"
+        user_info = requests.get(
+            user_info_url, headers={"Authorization": f"Bearer {access_token}"}
+        ).json()
+
+        email = user_info.get("email")
+        name = user_info.get("name", "")
+
+        if not email:
+            return Response({"error": "No email returned from Google"}, status=400)
+
+        # Check if user already exists
+        if User.objects.filter(email=email).exists():
+            return Response({"error": "User already exists. Please login."}, status=400)
+
+        # Create new user (signup)
+        user = User.objects.create(
+            email=email,
+            username=email.split("@")[0],
+            first_name=name
+        )
+
+        # Generate JWT tokens
+        refresh = RefreshToken.for_user(user)
+        access_token_jwt = str(refresh.access_token)
+
+        return Response({
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "name": user.first_name,
+            },
+            "refresh": str(refresh),
+            "access": access_token_jwt,
+            "message": "Signup successful"
+        }, status=201)
