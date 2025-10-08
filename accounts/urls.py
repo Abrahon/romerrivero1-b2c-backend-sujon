@@ -22,8 +22,8 @@ urlpatterns = [
     path('admin/create/', AdminCreateView.as_view(), name='admin-create'),
 
     # Social login URLs from django-allauth
-    path('social/', include('allauth.socialaccount.urls')),  # Social login (Google, Facebook, Twitter)
+    path('social/', include('allauth.socialaccount.urls')),         
     path("google/login/", GoogleLoginView.as_view(), name="google_login"),
     path("google/callback/", GoogleCallbackView.as_view(), name="google_callback"),
-    path("google/exchange/", GoogleExchangeView.as_view(), name="google_exchange")
+    path("google/exchange/", GoogleExchangeView.as_view(), name="google_exchange")   
 ]

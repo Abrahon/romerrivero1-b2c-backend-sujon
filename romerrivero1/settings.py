@@ -81,16 +81,16 @@ DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 
 
 
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.getenv(
-            'DATABASE_URL',
-            'postgresql://romero_user:Bg52tJ3BJ3Yh2Nwt2gmfpkJvgqKq6L7x@dpg-d2tmeu8gjchc73a0o8bg-a.oregon-postgres.render.com/romero'
-        ),
-        conn_max_age=600,
-        ssl_require=True  
-    )
-}
+# DATABASES = {
+#     'default': dj_database_url.config(
+#         default=os.getenv(
+#             'DATABASE_URL',
+#             'postgresql://romero_user:Bg52tJ3BJ3Yh2Nwt2gmfpkJvgqKq6L7x@dpg-d2tmeu8gjchc73a0o8bg-a.oregon-postgres.render.com/romero'
+#         ),
+#         conn_max_age=600,
+#         ssl_require=True  
+#     )
+# }
 
 
 
