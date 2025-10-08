@@ -11,38 +11,80 @@ from langchain_pinecone import PineconeVectorStore
 from langchain_core.documents import Document
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain.chains import ConversationalRetrievalChain
-from langchain.chains import RetrievalQA
 from langchain.memory import ConversationBufferMemory
 
-# Pinecone client
-from pinecone import Pinecone
+# Pinecone client (gRPC)
+from pinecone.grpc import PineconeGRPC as Pinecone
+from pinecone import ServerlessSpec
 
 # -----------------------------------
 # Load environment variables
 # -----------------------------------
 load_dotenv()
 
-# Initialize Pinecone
+# Initialize Pinecone (gRPC)
 pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
-index = pc.Index("shihab-chatbot")
+
+index_name = "ai-distribution-chatbot"
+
+
+# Create index if not exists
+if not pc.has_index(index_name):
+    pc.create_index(
+        name=index_name,
+        vector_type="dense",
+        dimension=1536,   # matches text-embedding-3-large
+        metric="cosine",
+        spec=ServerlessSpec(
+            cloud="aws",
+            region="us-east-1"
+        ),
+        deletion_protection="disabled",
+        tags={
+            "environment": "development"
+        }
+    )
+
+index = pc.Index(index_name)
 
 # -----------------------------------
 # Embeddings & LLM (OpenAI)
 # -----------------------------------
-# Choose embedding size:
-#   text-embedding-3-small = 1536 dims
-#   text-embedding-3-large = 3072 dims
-embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
-
+embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 llm = ChatOpenAI(temperature=0.5)
 
 # -----------------------------------
 # Custom Prompt
 # -----------------------------------
 prompt_template = """
-You are an AI support agent for a B2B chatbot.
-Speak naturally, in a human-like and professional tone, as if you are chatting directly with the user.
-Use the following context to answer the question clearly and accurately.
+You are AIDistrib, the official B2B snack distribution assistant for AI Distribution. 
+AI Distribution supplies novelty foods, exotic snack boxes, and branded candy to retailers, distributors, and business partners. 
+Your role is to assist businesses with bulk ordering, wholesale pricing, shipping logistics, and partnership opportunities. 
+Always retrieve the most relevant information from the knowledge base before answering.
+
+Guidelines:
+- Keep a professional, trustworthy, and solution-oriented tone. 
+- Focus on business needs: pricing tiers, bulk discounts, shelf life, packaging, and delivery timelines.
+- When describing products, emphasize consumer demand, resale potential, and uniqueness (e.g., “Exotic Snack Box is a trending product for gift shops and subscription services”).
+- Provide information on compliance, labeling, and certifications when available.
+- For policies (returns, shipping, minimum order quantities), explain clearly and step-by-step.
+- If asked about samples or custom branding, outline the available options.
+- Never invent product details — if data is missing, acknowledge and guide to a sales rep.
+- Position AI Distribution as a reliable, scalable, and long-term partner.
+
+Example responses:
+Q: “What’s your minimum order quantity for Exotic Snack Boxes?”
+A: “Our standard MOQ is 50 units per order for the Exotic Snack Boxes. We also offer price breaks at 100 and 500 units. Would you like me to prepare a wholesale price sheet?”
+
+Q: “Can you handle international shipping?”
+A: “Yes, we ship globally. For international wholesale orders, delivery usually takes 2–4 weeks depending on destination and customs clearance. I can share estimated freight costs based on your order volume and location.”
+
+Q: “Do you offer custom packaging with our branding?”
+A: “Yes, AI Distribution provides private-label and co-branded packaging options for select products, including Dalgona Cookies and Level Up Sour Candy. Custom packaging typically requires a higher MOQ. I can connect you with our branding team for details.”
+
+
+
+---
 
 Context:
 {context}
@@ -57,6 +99,7 @@ custom_prompt = PromptTemplate(
     input_variables=["context", "question"],
     template=prompt_template,
 )
+
 
 # -----------------------------------
 # Vectorstore Retriever
@@ -188,7 +231,6 @@ def delete_training_data(delete_id: str):
 # -----------------------------------
 # Chat Endpoint with Memory
 # -----------------------------------
-# Memory instance (keeps chat history in memory only)
 memory = ConversationBufferMemory(
     memory_key="chat_history",
     return_messages=True,
@@ -214,4 +256,4 @@ def query_data(query: QueryModel):
 # -----------------------------------
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("b2b_chatbot copy:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("ai_distribution:app", host="0.0.0.0", port=8000, reload=True)

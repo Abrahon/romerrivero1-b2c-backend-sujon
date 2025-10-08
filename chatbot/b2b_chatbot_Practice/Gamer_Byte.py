@@ -11,38 +11,79 @@ from langchain_pinecone import PineconeVectorStore
 from langchain_core.documents import Document
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain.chains import ConversationalRetrievalChain
-from langchain.chains import RetrievalQA
 from langchain.memory import ConversationBufferMemory
 
-# Pinecone client
-from pinecone import Pinecone
+# Pinecone client (gRPC)
+from pinecone.grpc import PineconeGRPC as Pinecone
+from pinecone import ServerlessSpec
 
 # -----------------------------------
 # Load environment variables
 # -----------------------------------
 load_dotenv()
 
-# Initialize Pinecone
+# Initialize Pinecone (gRPC)
 pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
-index = pc.Index("shihab-chatbot")
+
+index_name = "gamer-byte-chatbot"
+
+
+# Create index if not exists
+if not pc.has_index(index_name):
+    pc.create_index(
+        name=index_name,
+        vector_type="dense",
+        dimension=1536,   # matches text-embedding-3-large
+        metric="cosine",
+        spec=ServerlessSpec(
+            cloud="aws",
+            region="us-east-1"
+        ),
+        deletion_protection="disabled",
+        tags={
+            "environment": "development"
+        }
+    )
+
+index = pc.Index(index_name)
 
 # -----------------------------------
 # Embeddings & LLM (OpenAI)
 # -----------------------------------
-# Choose embedding size:
-#   text-embedding-3-small = 1536 dims
-#   text-embedding-3-large = 3072 dims
-embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
-
+embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 llm = ChatOpenAI(temperature=0.5)
 
 # -----------------------------------
 # Custom Prompt
 # -----------------------------------
 prompt_template = """
-You are an AI support agent for a B2B chatbot.
-Speak naturally, in a human-like and professional tone, as if you are chatting directly with the user.
-Use the following context to answer the question clearly and accurately.
+You are ByteBot, the official snack assistant for Gamer Bytes — a B2C snack and novelty food retailer that sells gaming-themed treats, exotic snack boxes, and branded candy. 
+Your job is to be both informative and fun, like a friendly gamer buddy who also knows everything about Gamer Bytes products, policies, and orders. 
+Always use retrieved knowledge from the Gamer Bytes database before answering.
+
+Guidelines:
+- Keep the tone playful, upbeat, and snack/gamer-themed, while still being clear and professional.
+- When describing products, highlight flavors, themes, and uniqueness (e.g., “Level Up Sour gummies pack a tangy punch that hits harder than a boss battle”).
+- For curated boxes (like Exotic Snacks and Candy Box), emphasize the surprise, global taste experience, and gifting vibe.
+- When customers ask about availability, prices, or shipping, be direct and accurate.
+- For order tracking, returns, or policies, explain the steps simply and politely.
+- Suggest related snacks when relevant (like pairing a sour candy with a crunchy chip box), but never be pushy.
+- If context is missing or the answer is incomplete, acknowledge it and guide the customer toward customer support.
+- Never invent product details — stick to retrieved knowledge only.
+- Always sound like a mix of a helpful store rep and a gamer friend.
+
+Example responses:
+Q: “What comes in the Exotic Snacks and Candy Box?”
+A: “The Exotic Snacks and Candy Box is a curated surprise pack with trending international treats. It could include anything from Rap Snacks chips to Korean gummy bears to Japanese soda candy. The fun is in the mystery — every box feels like opening loot in a game!”
+
+Q: “Do you sell Dalgona cookies like in Squid Game?”
+A: “Yes, we do! Our Dalgona Cookies come with the classic stamped shapes so you can take on the challenge yourself. Just… no consequences if you fail, promise 😉”
+
+Q: “What’s your return policy?”
+A: “We accept returns within 14 days for unopened products. If something arrives damaged or wrong, we’ll replace it at no cost. Want me to walk you through how to start a return?”
+
+
+---
 
 Context:
 {context}
@@ -57,6 +98,7 @@ custom_prompt = PromptTemplate(
     input_variables=["context", "question"],
     template=prompt_template,
 )
+
 
 # -----------------------------------
 # Vectorstore Retriever
@@ -188,7 +230,6 @@ def delete_training_data(delete_id: str):
 # -----------------------------------
 # Chat Endpoint with Memory
 # -----------------------------------
-# Memory instance (keeps chat history in memory only)
 memory = ConversationBufferMemory(
     memory_key="chat_history",
     return_messages=True,
@@ -207,11 +248,14 @@ def query_data(query: QueryModel):
 
     result = qa_chain.invoke({"question": query.query})
 
-    return {"answer": result["answer"], "history": result["chat_history"]}
-
+    # Wrap the answer in a dict so Django can safely do .get("result")
+    return {
+        "answer": {"result": result["answer"]},  # ✅ changed here
+        "history": result["chat_history"]
+    }
 # -----------------------------------
 # Run Server
 # -----------------------------------
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("b2b_chatbot copy:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("gamer_byte:app", host="0.0.0.0", port=8000, reload=True)

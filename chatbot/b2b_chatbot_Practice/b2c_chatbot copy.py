@@ -4,7 +4,6 @@ from pydantic import BaseModel, Field
 from typing import Annotated, Literal, List
 import os
 from dotenv import load_dotenv
-from uuid import uuid4
 
 # LangChain imports
 from langchain.prompts import PromptTemplate
@@ -96,6 +95,7 @@ class TrainingModel(BaseModel):
     ai_response: str = Field(..., description="AI response of the training data")
     keywords: List[str] = Field(..., description="List of keywords")
 
+
 class QueryModel(BaseModel):
     query: str
 
@@ -103,11 +103,9 @@ class QueryModel(BaseModel):
 # Training Data Endpoints
 # -----------------------------------
 @app.post("/train_data")
-def add_training_data(data: TrainingModel):
+def add_training_data(data: TrainingModel, doc_id: str):
     """Add new training data into Pinecone"""
     try:
-        doc_id = str(uuid4())  # generate a unique ID automatically
-
         content_text = (
             f"Category: {data.category}\n"
             f"Context: {data.context}\n"
@@ -130,16 +128,20 @@ def add_training_data(data: TrainingModel):
     except Exception as e:
         return {"error": str(e)}
 
+
 @app.get("/metadata/{doc_id}")
 def get_metadata(doc_id: str):
     """Fetch metadata for a document by ID"""
     try:
         response = index.fetch(ids=[doc_id])
+
         if doc_id not in response.vectors:
             raise HTTPException(status_code=404, detail=f"Document with id {doc_id} not found")
+
         return response.vectors[doc_id].metadata
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.put("/train_data/{edit_id}")
 def edit_training_data(edit_id: str, data: TrainingModel):
@@ -166,7 +168,8 @@ def edit_training_data(edit_id: str, data: TrainingModel):
         vectorstore.add_documents([doc], ids=[edit_id])
         return {"message": f"Document with id {edit_id} updated successfully."}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"error": str(e)}
+
 
 @app.delete("/train_data/{delete_id}")
 def delete_training_data(delete_id: str):
@@ -175,7 +178,7 @@ def delete_training_data(delete_id: str):
         vectorstore.delete(ids=[delete_id])
         return {"message": f"Document with id {delete_id} deleted successfully."}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"error": str(e)}
 
 # -----------------------------------
 # Chat Endpoint with Memory
@@ -189,15 +192,20 @@ memory = ConversationBufferMemory(
 @app.post("/query")
 def query_data(query: QueryModel):
     """Chat endpoint with conversational memory"""
-    try:
-        qa_chain = ConversationalRetrievalChain.from_llm(
-            llm=llm,
-            retriever=retriever,
-            memory=memory,
-            combine_docs_chain_kwargs={"prompt": custom_prompt},
-        )
+    qa_chain = ConversationalRetrievalChain.from_llm(
+        llm=llm,
+        retriever=retriever,
+        memory=memory,
+        combine_docs_chain_kwargs={"prompt": custom_prompt},
+    )
 
-        result = qa_chain.invoke({"question": query.query})
-        return {"answer": result["answer"], "history": result["chat_history"]}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    result = qa_chain.invoke({"question": query.query})
+
+    return {"answer": result["answer"], "history": result["chat_history"]}
+
+# -----------------------------------
+# Run Server
+# -----------------------------------
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("b2c_chatbot copy:app", host="0.0.0.0", port=8001, reload=True)

@@ -25,7 +25,7 @@ from rest_framework.pagination import PageNumberPagination
 from .serializers import ChatBotQuerySerializer
 
 
-AI_BASE_URL = "http://127.0.0.1:8001"  
+AI_BASE_URL = "http://127.0.0.1:8080"  
 
 # # Buyer sends message
 class SendMessageView(generics.CreateAPIView):
@@ -263,6 +263,7 @@ class ChatQueryView(APIView):
 
         # Extract the actual AI answer
         answer_text = ai_response.get("answer", {}).get("result", "")
+        # ai_response.get("answer", {}).get("result", "") 
 
         # Save chat history
         chat = ChatBotQuery.objects.create(
