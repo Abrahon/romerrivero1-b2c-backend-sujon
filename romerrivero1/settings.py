@@ -123,7 +123,7 @@ CHANNEL_LAYERS = {
     }
 }
 
-FRONTEND_REDIRECT_URL = "http://localhost:3000/auth/callback"
+FRONTEND_REDIRECT_URL = "https://gamerbytes.us/google/callback"
 # session for reset password 
 SESSION_COOKIE_AGE = 600  
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True  
