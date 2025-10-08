@@ -9,7 +9,8 @@ from .views import (
     OrderTrackingView,
     OrderListFilter,
     # OrderTrackingDetailView,
-    AdminUpdateOrderStatusView
+    AdminUpdateOrderStatusView,
+    OrderDeleteView
 )
 
 urlpatterns = [
@@ -18,9 +19,12 @@ urlpatterns = [
     path("orders/place/", PlaceOrderView.as_view(), name="place-order"),
     path("orders/tracking/<str:order_identifier>/", OrderTrackingView.as_view(), name="order-tracking"),
     path("orders/buy-now/", BuyNowView.as_view(), name="buy-now"),
+    # path('admin/order/status/', OrderListFilter.as_view(), name='order-list-filter'),
+
     #  path("orders/tracking/", OrderTrackingView.as_view(), name="tracking-list-create"),
     # path("orders/tracking/<int:pk>/", OrderTrackingDetailView.as_view(), name="tracking-detail"),
     path("admin/orders/<int:id>/status/", AdminUpdateOrderStatusView.as_view(), name="admin_update_order_status"),
-    path('orders/', OrderListFilter.as_view(), name='order-list'),
+    path('admin/orders/status/', OrderListFilter.as_view(), name='order-list'),
     path('admin/orders/', AdminOrderListView.as_view(), name='admin-order-list'),
+    path('admin/orders/<int:pk>/delete/', OrderDeleteView.as_view(), name='admin-order-delete'),
 ]

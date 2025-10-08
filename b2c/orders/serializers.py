@@ -30,6 +30,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from .models import Order, OrderItem
 from b2c.products.serializers import ProductSerializer 
+# from b2c.checkout.serializers import ShippingSerializer 
 
 
 User = get_user_model()
@@ -129,6 +130,7 @@ class OrderDetailSerializer(serializers.ModelSerializer):
 
 class OrderListSerializer(serializers.ModelSerializer):
     user_email = serializers.CharField(source="user.email", read_only=True)
+    user_name = serializers.CharField(source="user.username", read_only=True) 
     shipping_address = serializers.CharField(source="shipping_address.address", read_only=True)
     order_items = serializers.SerializerMethodField()
 
@@ -138,14 +140,17 @@ class OrderListSerializer(serializers.ModelSerializer):
             "id",
             "order_number",
             "user_email",
+            "user_name",
             "order_status",
             "total_amount",
             "created_at",
-            "order_items"
+            "order_items",
+            "shipping_address",
         ]
 
     def get_order_items(self, obj):
-        items = obj.orderitem_set.all()
+        # items = obj.orderitem_set.all()
+        items = obj.items.all() 
         return [
             {
                 "product": i.product.title,

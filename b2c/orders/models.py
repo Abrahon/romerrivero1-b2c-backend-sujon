@@ -45,10 +45,6 @@ class Order(TimeStampedModel):
             self.estimated_delivery = timezone.now() + timedelta(days=5)
             super().save(update_fields=["estimated_delivery"])
         
-        # if not self.estimated_delivery and (self.is_paid or self.payment_method == "COD"):
-        #     self.estimated_delivery = timezone.now() + timedelta(days=5)
-        #     super().save(update_fields=["estimated_delivery"])
-
 
     
     # calculate total ammount 
@@ -70,6 +66,11 @@ class Order(TimeStampedModel):
 
 class OrderItem(models.Model):
     order = models.ForeignKey("orders.Order", related_name="items", on_delete=models.CASCADE)
+    # order = models.ForeignKey(
+    #     Order,
+    #     on_delete=models.CASCADE,
+    #     related_name="items"  # <-- check this line
+    # )
     product = models.ForeignKey("products.Products", on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField()
     price = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))

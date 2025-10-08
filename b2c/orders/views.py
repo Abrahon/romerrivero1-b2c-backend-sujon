@@ -33,7 +33,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from datetime import timedelta
-
+from rest_framework import generics, filters, status
+from rest_framework.response import Response
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.permissions import IsAdminUser
+from .models import Order
+from .serializers import OrderListSerializer
 # Serializers
 from b2c.orders.serializers import (
     OrderItemSerializer,
@@ -264,10 +269,12 @@ class OrderTrackingView(generics.RetrieveAPIView):
 
 
 # order list filter 
+
+
 class OrderListFilter(generics.ListAPIView):
     """
     List all orders with searching and filtering.
-    Search by customer email or order_number.
+    Search by order number, customer email, or name.
     Filter by order_status.
     """
     queryset = Order.objects.select_related('user', 'shipping_address').all().order_by('-created_at')
@@ -275,10 +282,36 @@ class OrderListFilter(generics.ListAPIView):
     permission_classes = [IsAdminUser]
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['order_status']  # filter by status
-    search_fields = ['user__email', 'user_name', 'order_number']  # search by customer email or order number
-    ordering_fields = ['created_at', 'total_amount']  # optional ordering
+    filterset_fields = ['order_status']
+
+    search_fields = [
+        'order_number',
+        'user__email',
+        'user__name',
+        'shipping_address__full_name',
+        'shipping_address__email'
+    ]
+
+    ordering_fields = ['created_at', 'total_amount']
     ordering = ['-created_at']
+    pagination_class = None
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        if not queryset.exists():
+            return Response(
+                {"message": "No orders found for the given search or filters."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+
+
+
+
 
 
 
@@ -352,3 +385,27 @@ class AdminOrderListView(generics.ListAPIView):
         return Order.objects.select_related("shipping_address", "user") \
                             .prefetch_related("items__product", "tracking_history") \
                             .order_by("-created_at")
+
+# delete order 
+
+class OrderDeleteView(generics.DestroyAPIView):
+    """
+    Delete an order by ID (Admin only).
+    """
+    queryset = Order.objects.all()
+    permission_classes = [permissions.IsAdminUser]
+
+    def delete(self, request, *args, **kwargs):
+        order_id = kwargs.get('pk')
+        try:
+            order = self.get_queryset().get(pk=order_id)
+            order.delete()
+            return Response(
+                {"message": f"Order #{order_id} deleted successfully."},
+                status=status.HTTP_204_NO_CONTENT
+            )
+        except Order.DoesNotExist:
+            return Response(
+                {"error": "Order not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )

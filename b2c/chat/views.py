@@ -263,7 +263,7 @@ class ChatQueryView(APIView):
 
         # Extract the actual AI answer
         answer_text = ai_response.get("answer", {}).get("result", "")
-        # ai_response.get("answer", {}).get("result", "") 
+        ai_response.get("answer", {}).get("result", "") 
 
         # Save chat history
         chat = ChatBotQuery.objects.create(
