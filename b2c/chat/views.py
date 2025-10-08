@@ -7,6 +7,14 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 import requests
 
+from rest_framework import generics
+from rest_framework.permissions import IsAdminUser
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
+from django.db.models import Q
+from .models import ChatBotQuery, TrainData
+from .serializers import ChatBotQuerySerializer, TrainDataSerializer
+# from .settings import AI_BASE_URL
 from accounts.models import User
 from accounts.permissions import IsAdminUser
 from .models import Message, TrainData, ChatBotQuery
@@ -15,7 +23,7 @@ from .serializers import (
     UserListSerializer,
     TrainDataSerializer,
     ChatBotQuerySerializer,
-    ChatQuerySerializer,
+    ChatQuerySerializer,     
 )
 from django.db.models import Q
 from rest_framework import generics
@@ -294,31 +302,36 @@ class ChatBotQueryListView(generics.ListAPIView):
 
 
 
+# Pagination
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = "page_size"
     max_page_size = 100
 
+# -------------------------------
+# Admin view: Training data + chat stats
+# -------------------------------
 class ChatBotQueryStatsView(generics.ListAPIView):
-    serializer_class = ChatBotQuerySerializer
+    """
+    Admin view to show all training data (history) with stats.
+    Recent conversations/stats remain same as before.
+    """
+    serializer_class = TrainDataSerializer
     permission_classes = [IsAdminUser]
     pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
-        queryset = ChatBotQuery.objects.all().order_by("-created_at")
+        queryset = TrainData.objects.all().order_by("-id")
 
-        # Search by query text or AI response
+        # Optional search by category, context, question, or AI response
         search = self.request.query_params.get("search")
         if search:
             queryset = queryset.filter(
-                Q(query__icontains=search) | Q(ai_response__icontains=search)
+                Q(category__icontains=search) |
+                Q(context__icontains=search) |
+                Q(question__icontains=search) |
+                Q(ai_response__icontains=search)
             )
-
-        # Filter by user email
-        user_email = self.request.query_params.get("user_email")
-        if user_email:
-            queryset = queryset.filter(user__email__icontains=user_email)
-
         return queryset
 
     def list(self, request, *args, **kwargs):
@@ -326,31 +339,24 @@ class ChatBotQueryStatsView(generics.ListAPIView):
 
         # Pagination
         page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-        else:
-            serializer = self.get_serializer(queryset, many=True)
+        serializer = self.get_serializer(page or queryset, many=True)
 
-        # Stats (use the full queryset, not just the paginated page)
-        total_conversations = queryset.count()
-        qualified_leads = queryset.filter(
+        # Stats section: still based on chat conversations
+        chat_queryset = ChatBotQuery.objects.all().order_by("-created_at")
+        total_conversations = chat_queryset.count()
+        qualified_leads = chat_queryset.filter(
             ai_response__iregex=r'qualified|interested|yes'
         ).count()
-        conversation_rate = (qualified_leads / total_conversations * 100) if total_conversations > 0 else 0
-
-        # Recent conversations (last 5 overall)
-        recent_conversations = queryset[:5]
-        recent_serializer = self.get_serializer(recent_conversations, many=True)
+        conversation_rate = (qualified_leads / total_conversations * 100) if total_conversations else 0
+        recent_conversations = chat_queryset[:5]
+        recent_serializer = ChatBotQuerySerializer(recent_conversations, many=True)
 
         response_data = {
             "total_conversations": total_conversations,
             "qualified_leads": qualified_leads,
             "conversation_rate": round(conversation_rate, 2),
             "recent_conversations": recent_serializer.data,
+            "all_training_data": serializer.data  
         }
 
-        # Include paginated results
-        return self.get_paginated_response({
-            **response_data,
-            "all_chat_history": serializer.data
-        })
+        return self.get_paginated_response(response_data)

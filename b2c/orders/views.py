@@ -16,6 +16,10 @@ from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAdminUser
 from .serializers import OrderListSerializer
 # Models
+from rest_framework import generics
+from rest_framework.permissions import IsAuthenticated
+from .models import Order
+from .serializers import OrderDetailSerializer
 from b2c.cart.models import CartItem
 from b2c.checkout.models import Shipping
 from b2c.products.models import Products
@@ -207,17 +211,14 @@ class PlaceOrderView(APIView):
 
 
 # order details views
-# class OrderDetailView(generics.RetrieveAPIView):
-#     permission_classes = [IsAuthenticated]
-#     serializer_class = OrderDetailSerializer
+class OrderDetailView(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = OrderDetailSerializer
 
-#     def get_queryset(self):
-#         return Order.objects.filter(user=self.request.user).prefetch_related("items__product")
+    def get_queryset(self):
+        return Order.objects.filter(user=self.request.user).prefetch_related("items__product")
 
-from rest_framework import generics
-from rest_framework.permissions import IsAuthenticated
-from .models import Order
-from .serializers import OrderDetailSerializer
+
 
 class UserOrderHistoryView(generics.ListAPIView):
     """

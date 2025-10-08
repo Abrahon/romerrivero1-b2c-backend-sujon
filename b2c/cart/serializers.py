@@ -72,7 +72,7 @@ class CartItemSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         user = self.context["request"].user
-        product = validated_data["product"]
+        product = validated_data["product"]  
         quantity = validated_data.get("quantity", 1)
 
         cart_item, created = CartItem.objects.get_or_create(
