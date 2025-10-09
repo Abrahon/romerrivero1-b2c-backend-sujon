@@ -316,7 +316,6 @@ class OrderListFilter(generics.ListAPIView):
 
     ordering_fields = ['created_at', 'total_amount']
     ordering = ['-created_at']
-    pagination_class = None
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
