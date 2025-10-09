@@ -297,8 +297,11 @@ class OrderListFilter(generics.ListAPIView):
     Filter by order_status.
     """
     queryset = Order.objects.select_related('user', 'shipping_address').all().order_by('-created_at')
-    serializer_class = OrderListSerializer
+    # serializer_class = OrderListSerializer
+    serializer_class = OrderDetailSerializer
     permission_classes = [IsAdminUser]
+    # def get_queryset(self):
+    #     return Order.objects.filter(user=self.request.user).prefetch_related("items__product")
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['order_status']
@@ -326,10 +329,6 @@ class OrderListFilter(generics.ListAPIView):
 
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
-
-
-
-
 
 
 
