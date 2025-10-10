@@ -118,8 +118,6 @@ class VerifyOTPView(generics.GenericAPIView):
 
 
 
-User = get_user_model()
-
 class ResetPasswordView(generics.GenericAPIView):
     serializer_class = ResetPasswordSerializer
     permission_classes = [AllowAny]
@@ -266,8 +264,8 @@ class GoogleLoginView(APIView):
             "redirect_uri": settings.GOOGLE_REDIRECT_URI,
             "response_type": "code",
             "scope": "openid email profile",
-            "access_type": "offline",  # to get refresh token
-            "prompt": "consent",       # force account selection
+            "access_type": "offline",  
+            "prompt": "consent",       
         }
         google_auth_url = f"{base_url}?{urlencode(params)}"
         return Response({"auth_url": google_auth_url})

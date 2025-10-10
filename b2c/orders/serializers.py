@@ -161,7 +161,7 @@ class OrderListSerializer(serializers.ModelSerializer):
 
 
 
-
+# TODO
 class OrderTrackingSerializer(serializers.ModelSerializer):
     # items = OrderItemSerializer(many=True, read_only=True)
     updated_by = serializers.StringRelatedField(read_only=True)
@@ -169,15 +169,16 @@ class OrderTrackingSerializer(serializers.ModelSerializer):
     shipping_address = serializers.SerializerMethodField()
     items = OrderDetailSerializer(many=True, read_only=True, source='order.items')
     user_email = serializers.SerializerMethodField()
-    total_amount = serializers.SerializerMethodField() 
+    total_amount = serializers.SerializerMethodField()
+    final_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
 
     class Meta:
         model = OrderTracking
         fields = [
             'id', 'order', 'status', 'note', 'updated_by', 'created_at',
-            'order_items', 'shipping_address', 'user_email', 'total_amount', 'items'
+            'order_items', 'shipping_address', 'user_email', 'total_amount', 'final_amount', 'items'
         ]
-        read_only_fields = ['updated_by', 'created_at', 'items', 'total_amount']
+        read_only_fields = ['updated_by', 'created_at', 'items', 'total_amount','final_amount']
 
     def get_order_items(self, obj):
         items = obj.order.items.all()  # make sure related_name='items'
