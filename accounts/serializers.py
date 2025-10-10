@@ -6,23 +6,83 @@ from rest_framework import serializers
 from .models import OTP, User
 from rest_framework import serializers
 from .utils import generate_otp, send_otp_email
+from rest_framework import serializers
+from django.core.validators import RegexValidator
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class SignupSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, min_length=8)
-    confirm_password = serializers.CharField(write_only=True, min_length=8)
+    password = serializers.CharField(
+        write_only=True,
+        min_length=8,
+        error_messages={
+            "min_length": "Password must be at least 8 characters long.",
+            "blank": "Password field cannot be empty."
+        }
+    )
+    confirm_password = serializers.CharField(
+        write_only=True,
+        min_length=8,
+        error_messages={
+            "min_length": "Confirm password must be at least 8 characters long.",
+            "blank": "Confirm password field cannot be empty."
+        }
+    )
+
+    # ✅ Allow only alphabets and spaces for name
+    name = serializers.CharField(
+        validators=[
+            RegexValidator(
+                regex=r'^[A-Za-z\s]+$',
+                message="Name can only contain letters and spaces."
+            )
+        ],
+        error_messages={
+            "blank": "Name field is required.",
+            "required": "Please provide your name."
+        }
+    )
 
     class Meta:
         model = User
         fields = ['name', 'email', 'password', 'confirm_password', 'role']
 
+    def validate_email(self, value):
+        if not value:
+            raise serializers.ValidationError("Email field is required.")
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("This email is already registered.")
+        return value
+
     def validate(self, attrs):
-        if attrs['password'] != attrs['confirm_password']:
+        # ✅ Check password match
+        if attrs.get('password') != attrs.get('confirm_password'):
             raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
         return attrs
 
     def create(self, validated_data):
         validated_data.pop('confirm_password')
-        return User.objects.create_user(**validated_data)
+        user = User.objects.create_user(**validated_data)
+        return user
+
+
+# class SignupSerializer(serializers.ModelSerializer):
+#     password = serializers.CharField(write_only=True, min_length=8)
+#     confirm_password = serializers.CharField(write_only=True, min_length=8)
+
+#     class Meta:
+#         model = User
+#         fields = ['name', 'email', 'password', 'confirm_password', 'role']
+
+#     def validate(self, attrs):
+#         if attrs['password'] != attrs['confirm_password']:
+#             raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
+#         return attrs
+
+#     def create(self, validated_data):
+#         validated_data.pop('confirm_password')
+#         return User.objects.create_user(**validated_data)
 
 
 class LoginSerializer(serializers.Serializer):
@@ -53,7 +113,9 @@ class SendOTPSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         user = User.objects.get(email=validated_data['email'])
+        print("user",user)
         code = generate_otp()
+        print("otp",code)
         OTP.objects.create(user=user, code=code)
 
         # ✅ Send OTP using the user's actual name dynamically
@@ -72,7 +134,7 @@ class VerifyOTPSerializer(serializers.Serializer):
 
     def validate(self, data):
         request = self.context.get("request")
-        email = request.session.get("otp_user_email")  # get email from session
+        email = request.data.get("email") 
 
         if not email:
             raise serializers.ValidationError("No OTP request found. Please request OTP first.")
@@ -87,8 +149,6 @@ class VerifyOTPSerializer(serializers.Serializer):
 
         data["user"] = user
         return data
-
-
 
 
 class ResetPasswordSerializer(serializers.Serializer):
@@ -109,8 +169,7 @@ class ResetPasswordSerializer(serializers.Serializer):
         self.user.save()
         OTP.objects.filter(user=self.user).delete()
         return self.user
-
-
+    
 
 
 class ChangePasswordSerializer(serializers.Serializer):

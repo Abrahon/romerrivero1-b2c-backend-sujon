@@ -11,6 +11,7 @@ from .views import (
     GoogleCallbackView,
     GoogleLoginView,
     GoogleExchangeView,
+    CheckTokenView,
 )
 urlpatterns = [
     # Your custom authentication views
@@ -20,6 +21,7 @@ urlpatterns = [
     path('verify-otp/', VerifyOTPView.as_view(), name='verify-otp'),
     path('reset-password/', ResetPasswordView.as_view(), name='reset-password'),
     path('admin/create/', AdminCreateView.as_view(), name='admin-create'),
+    path('check/token/', CheckTokenView.as_view(), name='check-token'),
 
     # Social login URLs from django-allauth
     path('social/', include('allauth.socialaccount.urls')),         

@@ -101,8 +101,8 @@ class OrderItemSerializer(serializers.ModelSerializer):
 class OrderDetailSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     product = ProductSerializer(read_only=True)
-    # product = ProductSerializer(read_only=True)
     shipping_address = ShippingSerializer(read_only=True)
+    user_email = serializers.EmailField(source="user.email", read_only=True)
     # tracking_history = OrderTrackingSerializer(many=True, read_only=True)
     total_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     discounted_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
@@ -112,19 +112,17 @@ class OrderDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = [
-            'id', 'order_number', 'user', 'product', 'shipping_address',
+            'id', 'order_number', 'user', 'product', 'user_email', 'shipping_address',
             'items', 'tracking_history','coupon', 'total_amount', 'discounted_amount','final_amount',
             'is_paid', 'payment_status', 'order_status',
             'stripe_payment_intent', 'stripe_checkout_session_id', 'created_at','estimated_delivery',
         ]
         read_only_fields = [
-            'user', 'order_number', 'items', 'product','tracking_history',
+            'user', 'order_number', 'items', 'product', 'user_email','tracking_history',
             'total_amount', 'discounted_amount', 'is_paid',
             'payment_status', 'order_status', 'final_amount','stripe_payment_intent',
             'stripe_checkout_session_id', 'created_at','estimated_delivery',
         ]
-
-
 
 
 
@@ -162,12 +160,10 @@ class OrderListSerializer(serializers.ModelSerializer):
 
 
 
-from rest_framework import serializers
-from decimal import Decimal
-from .models import OrderTracking, OrderItem
-from b2c.orders.serializers import OrderDetailSerializer  # make sure import is correct
+
 
 class OrderTrackingSerializer(serializers.ModelSerializer):
+    # items = OrderItemSerializer(many=True, read_only=True)
     updated_by = serializers.StringRelatedField(read_only=True)
     order_items = serializers.SerializerMethodField()
     shipping_address = serializers.SerializerMethodField()

@@ -287,45 +287,6 @@ class OrderTrackingView(generics.RetrieveAPIView):
 
 
 
-# order list filter 
-
-
-# class OrderListFilter(generics.ListAPIView):
- 
-#     queryset = Order.objects.select_related('user', 'shipping_address').all().order_by('-created_at')
-#     # serializer_class = OrderListSerializer
-#     serializer_class = OrderDetailSerializer
-#     permission_classes = [IsAdminUser]
-#     # def get_queryset(self):
-#     #     return Order.objects.filter(user=self.request.user).prefetch_related("items__product")
-
-#     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-#     filterset_fields = ['order_status']
-
-#     search_fields = [
-#         'order_number',
-#         'user__email',
-#         'user__name',
-#         'shipping_address__full_name',
-#         'shipping_address__email'
-#     ]
-
-#     ordering_fields = ['created_at', 'total_amount']
-#     ordering = ['-created_at']
-
-#     def list(self, request, *args, **kwargs):
-#         queryset = self.filter_queryset(self.get_queryset())
-
-#         if not queryset.exists():
-#             return Response(
-#                 {"message": "No orders found for the given search or filters."},
-#                 status=status.HTTP_404_NOT_FOUND
-#             )
-
-#         serializer = self.get_serializer(queryset, many=True)
-#         return Response(serializer.data)
-
-
 class OrderListFilter(generics.ListAPIView):
     queryset = Order.objects.select_related('user', 'shipping_address').all().order_by('-created_at')
     serializer_class = OrderDetailSerializer

@@ -258,7 +258,6 @@ class UserCategoryProductListView(generics.ListAPIView):
 class TopProductsView(generics.ListAPIView):
     serializer_class = ProductSerializer
     permission_classes = [permissions.AllowAny]
-    pagination_class = None
 
     def get_queryset(self):
         limit = self.request.query_params.get("limit", 10)

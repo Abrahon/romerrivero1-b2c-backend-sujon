@@ -5,22 +5,6 @@ from b2c.reviews.models import Review
 from django.db.models import Avg
 
 
-# class WishlistItemSerializer(serializers.ModelSerializer):
-#     product_details = ProductSerializer(source='product', read_only=True)
-#     in_wishlist = serializers.SerializerMethodField()
-#     average_rating = serializers.SerializerMethodField()
-
-#     class Meta:
-#         model = WishlistItem
-#         fields = ['id', 'product', 'product_details', "average_rating", "in_wishlist", 'added_at']
-#         read_only_fields = ['id', 'product_details', 'added_at']
-    
-#     def get_in_wishlist(self, obj):
-#         user = self.context.get("request").user
-#         if user.is_authenticated:
-#             return WishlistItem.objects.filter(user=user, product=obj).exists()
-#         return False
-
 class WishlistItemSerializer(serializers.ModelSerializer):
     product_details = ProductSerializer(source='product', read_only=True)
     in_wishlist = serializers.SerializerMethodField()

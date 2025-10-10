@@ -12,13 +12,22 @@ from django.contrib.auth.models import User
 from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.parsers import MultiPartParser, FormParser
 User = get_user_model()  
-
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework.permissions import IsAuthenticated
-
+from rest_framework import generics, status
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
+from rest_framework.parsers import MultiPartParser, FormParser
+from django.contrib.auth import get_user_model
+from .models import OTP
+from .serializers import ResetPasswordSerializer
 import requests
 from django.conf import settings
 from django.shortcuts import redirect
-from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -109,34 +118,60 @@ class VerifyOTPView(generics.GenericAPIView):
 
 
 
+User = get_user_model()
+
 class ResetPasswordView(generics.GenericAPIView):
     serializer_class = ResetPasswordSerializer
     permission_classes = [AllowAny]
     parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request, *args, **kwargs):
-        # Retrieve the email from session
-        verified_email = request.session.get("verified_email")
+        """
+        Request body must include:
+        {
+            "email": "user@example.com",
+            "otp": "123456",
+            "new_password": "newStrongPassword123",
+            "confirm_password": "newStrongPassword123"
+        }
+        """
+        email = request.data.get("email")
+        otp_code = request.data.get("otp")
+        print("otp_code",otp_code)
 
-        if not verified_email:
-            return Response({"detail": "OTP verification required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not email or not otp_code:
+            return Response(
+                {"detail": "Email and OTP are required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        # Find the user by email stored in session
-        user = User.objects.filter(email=verified_email).first()
+        # 1️⃣ Verify user exists
+        user = User.objects.filter(email=email).first()
+        print("user", user)
 
         if not user:
             return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Use the user to reset the password
-        serializer = self.get_serializer(data=request.data, context={'user': user})
+        # 2️⃣ Verify OTP
+        # otp = OTP.objects.filter(user=user, code=str(otp_code)).order_by("-created_at").first()
+        otp = OTP.objects.filter(user=user, code=str(otp_code).strip()).order_by("-created_at").first()
+        print("otp", otp)
+        if not otp:
+            return Response({"detail": "Invalid OTP."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if otp.is_expired():
+            return Response({"detail": "OTP has expired."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 3️⃣ OTP valid → delete OTP to prevent reuse
+        otp.delete()
+
+        # 4️⃣ Reset password
+        serializer = self.get_serializer(data=request.data, context={"user": user})
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        # Clean up the session
-        if "verified_email" in request.session:
-            del request.session["verified_email"]
-
         return Response({"message": "Password reset successfully."}, status=status.HTTP_200_OK)
+
 
 
 
@@ -165,6 +200,41 @@ class AdminCreateView(generics.CreateAPIView):
 
         return Response({"detail": "Admin user created successfully"},
                         status=status.HTTP_201_CREATED) 
+
+
+# check token valiude orn inavlid
+class CheckTokenView(APIView):
+    """
+    Check if a JWT access token is valid or invalid.
+    """
+    authentication_classes = [JWTAuthentication]
+
+    def get(self, request, *args, **kwargs):
+        # Extract token from the "Authorization" header
+        auth_header = request.headers.get('Authorization')
+
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return Response({"detail": "Authorization header missing or invalid format."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        token = auth_header.split(' ')[1]
+
+        jwt_auth = JWTAuthentication()
+        try:
+            validated_token = jwt_auth.get_validated_token(token)
+            user = jwt_auth.get_user(validated_token)
+            return Response({
+                "valid": True,
+                "message": "Token is valid.",
+                "user": user.email
+            }, status=status.HTTP_200_OK)
+        except (InvalidToken, TokenError) as e:
+            return Response({
+                "valid": False,
+                "message": "Invalid or expired token.",
+                "error": str(e)
+            }, status=status.HTTP_401_UNAUTHORIZED)
+
 
 # google login 
 import requests
