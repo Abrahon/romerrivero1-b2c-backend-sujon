@@ -145,6 +145,7 @@ class DashboardOverview(APIView):
 
 
 class AnalyticsView(APIView):
+    permission_classes = [permissions.IsAdminUser]
     """
     Analytics Dashboard:
     - User Growth

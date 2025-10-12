@@ -51,13 +51,15 @@ class TrainData(TimeStampedModel):
     def __str__(self):
         return f"{self.category} - {self.question[:30]}"
 
-
 class ChatBotQuery(TimeStampedModel):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     query = models.TextField()
     ai_response = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    timestamp = models.DateTimeField(auto_now_add=True)  
+    is_read = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.user.email} - {self.query[:30]}"
+
+
 

@@ -30,16 +30,14 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from .models import Order, OrderItem
 from b2c.products.serializers import ProductSerializer 
-# from b2c.checkout.serializers import ShippingSerializer 
-
-
 User = get_user_model()
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
     product = ProductSerializer(read_only=True)
     product_name = serializers.CharField(source="product.title", read_only=True)
-    product_image = serializers.ImageField(source="product.image", read_only=True)
+    # product_image = serializers.ImageField(source="product.image", read_only=True)
+    product_image = serializers.SerializerMethodField() 
     product_discount = serializers.SerializerMethodField()
     coupon_discount = serializers.SerializerMethodField()
     final_price = serializers.SerializerMethodField()
@@ -57,18 +55,29 @@ class OrderItemSerializer(serializers.ModelSerializer):
         ]
     
 
+    # def get_product_image(self, obj):
+    #     request = self.context.get("request")
+        
+    #     product = getattr(obj, "product", None)
+    #     if product and hasattr(product, "image") and product.image and request:
+    #         return request.build_absolute_uri(product.image.url)
+        
+    #     # fallback if request is not provided or no image exists
+    #     if product and hasattr(product, "image") and product.image:
+    #         return product.image.url
+
+    #     return None
+    
     def get_product_image(self, obj):
         request = self.context.get("request")
-        
         product = getattr(obj, "product", None)
-        if product and hasattr(product, "image") and product.image and request:
-            return request.build_absolute_uri(product.image.url)
-        
-        # fallback if request is not provided or no image exists
-        if product and hasattr(product, "image") and product.image:
-            return product.image.url
+        if product and getattr(product, "images", None):
+            # if images is JSONField
+            return [request.build_absolute_uri(img) if request else img for img in product.images]
+        elif product and getattr(product, "image", None):
+            return [request.build_absolute_uri(product.image.url) if request else product.image.url]
+        return []
 
-        return None
 
 
     def get_product_discount(self, obj):
@@ -76,7 +85,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     def get_coupon_discount(self, obj):
         coupon = getattr(obj.order, "coupon", None)
-        if coupon:
+        if coupon:        
             return coupon.discount_value
             # return order.coupon.discount_value
         return 0
@@ -162,28 +171,178 @@ class OrderListSerializer(serializers.ModelSerializer):
 
 
 # TODO
+# class OrderTrackingSerializer(serializers.ModelSerializer):
+#     # items = OrderItemSerializer(many=True, read_only=True)
+#     updated_by = serializers.StringRelatedField(read_only=True)
+#     order_items = serializers.SerializerMethodField()
+#     shipping_address = serializers.SerializerMethodField()
+#     items = OrderDetailSerializer(many=True, read_only=True, source='order.items')
+#     user_email = serializers.SerializerMethodField()
+#     total_amount = serializers.SerializerMethodField()
+#     final_amount = serializers.SerializerMethodField() 
+
+#     class Meta:
+#         model = OrderTracking
+#         fields = [
+#             'id', 'order', 'status', 'note', 'updated_by', 'created_at',
+#             'order_items', 'shipping_address', 'user_email', 'total_amount', 'final_amount', 'items'
+#         ]
+#         read_only_fields = ['updated_by', 'created_at', 'items', 'total_amount','final_amount']
+
+#     def get_order_items(self, obj):
+#         items = obj.order.items.all()  # make sure related_name='items'
+#         return OrderDetailSerializer(items, many=True, context=self.context).data
+
+
+#     def get_shipping_address(self, obj):
+#         shipping = getattr(obj.order, 'shipping_address', None)
+#         if shipping:
+#             return {
+#                 "full_name": shipping.full_name,
+#                 "phone_no": shipping.phone_no,
+#                 "email": shipping.email,
+#                 "street_address": shipping.street_address,
+#                 "apartment": shipping.apartment,
+#                 "floor": shipping.floor,
+#                 "city": shipping.city,
+#                 "zipcode": shipping.zipcode
+#             }
+#         return None
+
+#     def get_user_email(self, obj):
+#         return obj.order.user.email if obj.order.user else None
+
+#     # def get_total_amount(self, obj):
+#     #     total = Decimal("0.00")
+#     #     for item in obj.order.items.all():
+#     #         total += Decimal(item.price) * item.quantity
+#     #     return str(total)
+
+#     def get_final_amount(self, obj):
+#         order = getattr(obj, "order", None)
+#         if order and getattr(order, "final_amount", None) is not None:
+#             return str(order.final_amount)
+
+#         # fallback: calculate total manually
+#         total = Decimal("0.00")
+#         if order:
+#             for item in order.items.all():
+#                 total += Decimal(item.price) * item.quantity
+#         return str(total)
+
+
+    
+#     def get_final_amount(self, obj):
+#         # If coupon applied, return obj.final_amount else same as total
+#         return str(obj.final_amount or self.get_total_amount(obj))
+
+from decimal import Decimal
+
+# class OrderTrackingSerializer(serializers.ModelSerializer):
+#     updated_by = serializers.StringRelatedField(read_only=True)
+#     order_items = serializers.SerializerMethodField()
+#     shipping_address = serializers.SerializerMethodField()
+#     items = OrderDetailSerializer(many=True, read_only=True, source='order.items')
+#     user_email = serializers.SerializerMethodField()
+#     discount = serializers.SerializerMethodField()
+#     product_discount = serializers.SerializerMethodField()
+#     total_amount = serializers.SerializerMethodField()
+#     final_amount = serializers.SerializerMethodField() 
+
+#     class Meta:
+#         model = OrderTracking
+#         fields = [
+#             'id', 'order', 'status', 'note', 'updated_by', 'created_at',
+#             'order_items', 'shipping_address', 'user_email', 'total_amount', 'final_amount', 'items'
+#         ]
+#         read_only_fields = ['updated_by', 'created_at', 'items', 'total_amount','final_amount']
+
+#     def get_order_items(self, obj):
+#         items = obj.order.items.all()
+#         return OrderDetailSerializer(items, many=True, context=self.context).data
+
+#     def get_shipping_address(self, obj):
+#         shipping = getattr(obj.order, 'shipping_address', None)
+#         if shipping:
+#             return {
+#                 "full_name": shipping.full_name,
+#                 "phone_no": shipping.phone_no,
+#                 "email": shipping.email,
+#                 "street_address": shipping.street_address,
+#                 "apartment": shipping.apartment,
+#                 "floor": shipping.floor,
+#                 "city": shipping.city,
+#                 "zipcode": shipping.zipcode
+#             }
+#         return None
+
+#     def get_user_email(self, obj):
+#         return obj.order.user.email if obj.order.user else None
+
+#     def get_total_amount(self, obj):
+#         """Compute total amount from order items"""
+#         order = getattr(obj, "order", None)
+#         total = Decimal("0.00")
+#         if order:
+#             for item in order.items.all():
+#                 total += Decimal(item.price) * item.quantity
+#         return str(total)
+
+#     def get_final_amount(self, obj):
+#         """Use final_amount from order if available, else calculate manually"""
+#         order = getattr(obj, "order", None)
+#         if order and getattr(order, "final_amount", None) is not None:
+#             return str(order.final_amount)
+
+#         # fallback: calculate manually using total_amount
+#         total = Decimal("0.00")
+#         if order:
+#             for item in order.items.all():
+#                 total += Decimal(item.price) * item.quantity
+
+#             # Optionally, apply coupon discount here if you want
+#             coupon = getattr(order, "coupon", None)
+#             if coupon:
+#                 if coupon.discount_type == "percentage":
+#                     total -= total * Decimal(str(coupon.discount_value)) / Decimal("100")
+#                 else:
+#                     total -= Decimal(str(coupon.discount_value))
+#             total = max(total, Decimal("0.00"))
+
+#         return str(total)
+
+
+
+
 class OrderTrackingSerializer(serializers.ModelSerializer):
-    # items = OrderItemSerializer(many=True, read_only=True)
     updated_by = serializers.StringRelatedField(read_only=True)
     order_items = serializers.SerializerMethodField()
     shipping_address = serializers.SerializerMethodField()
     items = OrderDetailSerializer(many=True, read_only=True, source='order.items')
     user_email = serializers.SerializerMethodField()
-    total_amount = serializers.SerializerMethodField()
-    final_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    discount = serializers.SerializerMethodField()              # Coupon discount
+    product_discount = serializers.SerializerMethodField()       # Product-level discount total
+    total_amount = serializers.SerializerMethodField()           # Total before any discount
+    final_amount = serializers.SerializerMethodField()           # Final total after all discounts
 
     class Meta:
         model = OrderTracking
         fields = [
             'id', 'order', 'status', 'note', 'updated_by', 'created_at',
-            'order_items', 'shipping_address', 'user_email', 'total_amount', 'final_amount', 'items'
+            'order_items', 'shipping_address', 'user_email',
+            'discount', 'product_discount', 'total_amount', 'final_amount', 'items'
         ]
-        read_only_fields = ['updated_by', 'created_at', 'items', 'total_amount','final_amount']
+        read_only_fields = [
+            'updated_by', 'created_at', 'items',
+            'total_amount', 'final_amount', 'discount', 'product_discount'
+        ]
 
+    # ------------------------------
+    # Related Data
+    # ------------------------------
     def get_order_items(self, obj):
-        items = obj.order.items.all()  # make sure related_name='items'
+        items = obj.order.items.all()
         return OrderDetailSerializer(items, many=True, context=self.context).data
-
 
     def get_shipping_address(self, obj):
         shipping = getattr(obj.order, 'shipping_address', None)
@@ -203,11 +362,66 @@ class OrderTrackingSerializer(serializers.ModelSerializer):
     def get_user_email(self, obj):
         return obj.order.user.email if obj.order.user else None
 
+    # ------------------------------
+    # 💰 Amount Calculations
+    # ------------------------------
     def get_total_amount(self, obj):
+        """Total before any discounts."""
         total = Decimal("0.00")
-        for item in obj.order.items.all():
-            total += Decimal(item.price) * item.quantity
-        return str(total)
+        order = getattr(obj, "order", None)
+
+        if order:
+            for item in order.items.all():
+                total += Decimal(item.price) * item.quantity
+
+        return str(total.quantize(Decimal("0.00")))
+
+    def get_product_discount(self, obj):
+        """Total discount amount from all product-level discounts."""
+        order = getattr(obj, "order", None)
+        total_discount = Decimal("0.00")
+
+        if order:
+            for item in order.items.all():
+                product = getattr(item, "product", None)
+                if product and getattr(product, "discount", None):
+                    discount_percent = Decimal(product.discount)
+                    product_price = Decimal(item.price)
+                    discount_amount = (product_price * discount_percent / Decimal("100")) * item.quantity
+                    total_discount += discount_amount
+
+        return str(total_discount.quantize(Decimal("0.00")))
+
+    def get_discount(self, obj):
+        """Total coupon discount amount only."""
+        order = getattr(obj, "order", None)
+        coupon_discount = Decimal("0.00")
+
+        if order and getattr(order, "coupon", None):
+            coupon = order.coupon
+            total = Decimal("0.00")
+            for item in order.items.all():
+                total += Decimal(item.price) * item.quantity
+
+            if coupon.discount_type == "percentage":
+                coupon_discount = total * Decimal(str(coupon.discount_value)) / Decimal("100")
+            else:
+                coupon_discount = Decimal(str(coupon.discount_value))
+
+        return str(coupon_discount.quantize(Decimal("0.00")))
+
+    def get_final_amount(self, obj):
+        """Final total = Total - ProductDiscount - CouponDiscount"""
+        total = Decimal(self.get_total_amount(obj))
+        product_discount = Decimal(self.get_product_discount(obj))
+        coupon_discount = Decimal(self.get_discount(obj))
+
+        final_amount = total - product_discount - coupon_discount
+        if final_amount < 0:
+            final_amount = Decimal("0.00")
+
+        return str(final_amount.quantize(Decimal("0.00")))
+
 
 
 class AdminOrderStatusUpdateSerializer(serializers.ModelSerializer):
@@ -223,7 +437,7 @@ class AdminOrderStatusUpdateSerializer(serializers.ModelSerializer):
 
 
 
-
+# buy now serializers
 class BuyNowSerializer(serializers.Serializer):
     product_id = serializers.IntegerField()
     quantity = serializers.IntegerField(default=1)

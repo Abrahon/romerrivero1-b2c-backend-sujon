@@ -10,7 +10,7 @@ from .views import (
     AdminProductRetrieveUpdateDeleteView,
     AdminProductBulkDelete,
     AdminProductStatusListView,
-    BulkUploadProductView,
+
 
     # ===== User Views =====
     UserCategoryListView,
@@ -44,7 +44,7 @@ urlpatterns = [
     path('admin/products/<int:id>/', AdminProductRetrieveUpdateDeleteView.as_view(), name='admin-product-rud'),
     path('admin/products/bulk-delete/', AdminProductBulkDelete.as_view(), name='admin-product-bulk-delete'),
     path('admin/products/status/', AdminProductStatusListView.as_view(), name='admin-product-status-list'),
-    path('admin/products/bulk-upload/', BulkUploadProductView.as_view(), name='admin-product-bulk-upload'),
+    # path('admin/products/bulk-upload/', BulkUploadProductView.as_view(), name='admin-product-bulk-upload'),
     path('admin/products/filter/', ProductSearchFilterView.as_view(), name='product-search-filter'),
 
     # User URLs (Authenticated)

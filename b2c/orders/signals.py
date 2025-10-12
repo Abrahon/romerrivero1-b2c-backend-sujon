@@ -21,12 +21,12 @@ def handle_new_order(sender, instance, created, **kwargs):
             message=(
                 f"Hello {instance.user.email},\n\n"
                 f"Your order {instance.order_number} has been confirmed.\n"
-                f"Total Amount: {instance.final_amount}\n\n"
+                f"Total Amount: ${instance.final_amount}\n\n"
                 "Thank you for shopping with us!"
             ),
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[instance.user.email],
             fail_silently=False,
-        )
+        )   
 
 

@@ -588,114 +588,114 @@ class RelatedProductsView(generics.ListAPIView):
 
 
 
-import csv
-import uuid
-import requests
-import logging
-from django.core.files.base import ContentFile
-from django.core.files.storage import default_storage
-from django.utils.text import slugify
-from rest_framework import status, permissions, generics
-from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from b2c.products.models import Products, ProductCategory
-from b2c.products.serializers import ProductSerializer
+# import csv
+# import uuid
+# import requests
+# import logging
+# from django.core.files.base import ContentFile
+# from django.core.files.storage import default_storage
+# from django.utils.text import slugify
+# from rest_framework import status, permissions, generics
+# from rest_framework.parsers import MultiPartParser, FormParser
+# from rest_framework.views import APIView
+# from rest_framework.response import Response
+# from b2c.products.models import Products, ProductCategory
+# from b2c.products.serializers import ProductSerializer
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 
-class BulkUploadProductView(APIView):
-    permission_classes = [permissions.IsAdminUser]
-    parser_classes = [MultiPartParser, FormParser]
+# class BulkUploadProductView(APIView):
+#     permission_classes = [permissions.IsAdminUser]
+#     parser_classes = [MultiPartParser, FormParser]
 
-    def post(self, request):
-        file = request.FILES.get('file', None)
-        print("file", file)
-        if not file:
-            return Response(
-                {"detail": "No file provided. Make sure the key is 'file' and type is File in Postman."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+#     def post(self, request):
+#         file = request.FILES.get('file', None)
+#         print("file", file)
+#         if not file:
+#             return Response(
+#                 {"detail": "No file provided. Make sure the key is 'file' and type is File in Postman."},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
 
-        print("Received FILES:", request.FILES)  # Debug: check file received
+#         print("Received FILES:", request.FILES)  
 
-        try:
-            file_data = file.read().decode('utf-8').splitlines()
-            reader = csv.DictReader(file_data)
-        except Exception as e:
-            logger.error(f"CSV read error: {str(e)}")
-            return Response({"detail": f"Error reading CSV: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+#         try:
+#             file_data = file.read().decode('utf-8').splitlines()
+#             reader = csv.DictReader(file_data)
+#         except Exception as e:
+#             logger.error(f"CSV read error: {str(e)}")
+#             return Response({"detail": f"Error reading CSV: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
-        created_products = []
-        failed_rows = []
+#         created_products = []
+#         failed_rows = []
 
-        for row in reader:
-            try:
-                category_name = row.get('category')
-                if not category_name:
-                    raise ValueError("Category is missing.")
-                category, _ = ProductCategory.objects.get_or_create(name=category_name)
+#         for row in reader:
+#             try:
+#                 category_name = row.get('category')
+#                 if not category_name:
+#                     raise ValueError("Category is missing.")
+#                 category, _ = ProductCategory.objects.get_or_create(name=category_name)
 
-                colors = [c.strip() for c in row.get('colors', '').split(',') if c.strip()]
-                image_paths = []
+#                 colors = [c.strip() for c in row.get('colors', '').split(',') if c.strip()]
+#                 image_paths = []
 
-                for url in row.get('images', '').split('|'):
-                    url = url.strip()
-                    if not url:
-                        continue
-                    try:
-                        response = requests.get(url, timeout=5)
-                        response.raise_for_status()
-                        ext = url.split('.')[-1].split('?')[0]  # remove query params if any
-                        seo_name = f"{slugify(row['title'])}-{uuid.uuid4().hex}.{ext}"
-                        full_path = f'product_images/{seo_name}'
-                        default_storage.save(full_path, ContentFile(response.content))
-                        image_paths.append(full_path)
-                    except Exception as e:
-                        logger.warning(f"Failed to download image {url}: {str(e)}")
+#                 for url in row.get('images', '').split('|'):
+#                     url = url.strip()
+#                     if not url:
+#                         continue
+#                     try:
+#                         response = requests.get(url, timeout=5)
+#                         response.raise_for_status()
+#                         ext = url.split('.')[-1].split('?')[0]  # remove query params if any
+#                         seo_name = f"{slugify(row['title'])}-{uuid.uuid4().hex}.{ext}"
+#                         full_path = f'product_images/{seo_name}'
+#                         default_storage.save(full_path, ContentFile(response.content))
+#                         image_paths.append(full_path)
+#                     except Exception as e:
+#                         logger.warning(f"Failed to download image {url}: {str(e)}")
 
-                product_data = {
-                    'title': row.get('title'),
-                    'product_code': row.get('product_code', ''),
-                    'category': category.id,
-                    'colors': colors,
-                    'available_stock': int(row.get('available_stock', 0)),
-                    'price': float(row.get('price', 0)),
-                    'description': row.get('description', ''),
-                    'images': image_paths
-                }
+#                 product_data = {
+#                     'title': row.get('title'),
+#                     'product_code': row.get('product_code', ''),
+#                     'category': category.id,
+#                     'colors': colors,
+#                     'available_stock': int(row.get('available_stock', 0)),
+#                     'price': float(row.get('price', 0)),
+#                     'description': row.get('description', ''),
+#                     'images': image_paths
+#                 }
 
-                serializer = ProductSerializer(data=product_data)
-                if serializer.is_valid():
-                    serializer.save()
-                    created_products.append(serializer.data)
-                else:
-                    failed_rows.append({"row": row, "errors": serializer.errors})
+#                 serializer = ProductSerializer(data=product_data)
+#                 if serializer.is_valid():
+#                     serializer.save()
+#                     created_products.append(serializer.data)
+#                 else:
+#                     failed_rows.append({"row": row, "errors": serializer.errors})
 
-            except Exception as e:
-                failed_rows.append({"row": row, "errors": str(e)})
-                logger.error(f"Error processing row {row}: {str(e)}")
+#             except Exception as e:
+#                 failed_rows.append({"row": row, "errors": str(e)})
+#                 logger.error(f"Error processing row {row}: {str(e)}")
 
-        return Response({
-            "created_products": created_products,
-            "failed_rows": failed_rows
-        }, status=status.HTTP_201_CREATED)
+#         return Response({
+#             "created_products": created_products,
+#             "failed_rows": failed_rows
+#         }, status=status.HTTP_201_CREATED)
 
-    def delete(self, request):
-        ids = request.data.get("ids", [])
-        if not ids:
-            return Response({"error": "No product IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
+#     def delete(self, request):
+#         ids = request.data.get("ids", [])
+#         if not ids:
+#             return Response({"error": "No product IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
 
-        products = Products.objects.filter(id__in=ids)
-        deleted_count = products.count()
+#         products = Products.objects.filter(id__in=ids)
+#         deleted_count = products.count()
 
-        for product in products:
-            if product.images:
-                for path in product.images:
-                    try:
-                        default_storage.delete(path)
-                    except Exception as e:
-                        logger.warning(f"Failed to delete image {path}: {str(e)}")
+#         for product in products:
+#             if product.images:
+#                 for path in product.images:
+#                     try:
+#                         default_storage.delete(path)
+#                     except Exception as e:
+#                         logger.warning(f"Failed to delete image {path}: {str(e)}")
 
-        products.delete()
-        return Response({"message": f"{deleted_count} products deleted successfully"}, status=status.HTTP_200_OK)
+#         products.delete()
+#         return Response({"message": f"{deleted_count} products deleted successfully"}, status=status.HTTP_200_OK)

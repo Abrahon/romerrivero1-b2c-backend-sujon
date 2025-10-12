@@ -157,17 +157,7 @@ CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,
 STRIPE_PUBLIC_KEY = os.getenv('STRIPE_PUBLIC_KEY')
 STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
 STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET')
-
-# Email settings
-# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-# EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
-# EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
-# EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
-# EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
-# EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
-# DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
-# ADMIN_EMAIL = os.getenv('EMAIL_HOST_USER')
-# ADMIN_EMAIL = os.getenv('ADMIN_EMAIL')
+    
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.hostinger.com'
@@ -265,9 +255,14 @@ REST_FRAMEWORK = {
 
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(days=30),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=15),
 }
+
+
+FRONTEND_REDIRECT_URL = "https://gamerbytes.us/google/callback"
+SESSION_COOKIE_AGE = 600  
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True  
 
 # SIMPLE_JWT = {
 #     "ACCESS_TOKEN_LIFETIME": timedelta(seconds=30),  
@@ -297,13 +292,10 @@ ALLOWED_HOSTS = ['*', 'localhost', '127.0.0.1', 'b2b-b2c-romerrivero1.onrender.c
 ROOT_URLCONF = 'romerrivero1.urls'
 
 # Login and Logout URL Configurations
-LOGIN_URL = 'accounts_login'  
-LOGOUT_URL = 'account_logout'  
-LOGIN_REDIRECT_URL = 'dashboard'  
-LOGOUT_REDIRECT_URL = 'userlogin'  
-
-
-# settings.py
+LOGIN_URL = "login"
+LOGOUT_URL = "logout"
+LOGIN_REDIRECT_URL = "dashboard" 
+ACCOUNT_LOGOUT_REDIRECT_URL = "login"
 
 GOOGLE_CLIENT_ID = config("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = config("GOOGLE_CLIENT_SECRET")
