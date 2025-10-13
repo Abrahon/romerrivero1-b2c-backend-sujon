@@ -43,14 +43,13 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.permissions import IsAdminUser
 from .models import Order
 from .serializers import OrderListSerializer
-# Serializers
 from b2c.orders.serializers import (
     OrderItemSerializer,
     OrderDetailSerializer,
     OrderTrackingSerializer,
     BuyNowSerializer,
 )
-
+from .enums import OrderStatus
 User = get_user_model()
 
 
@@ -232,7 +231,7 @@ class UserOrderHistoryView(generics.ListAPIView):
         return Order.objects.filter(user=self.request.user)\
                             .select_related("shipping_address")\
                             .prefetch_related("items__product")\
-                            .order_by("-created_at")  # latest orders first
+                            .order_by("-created_at")  
 
 # order tracking by order id 
 class OrderTrackingView(generics.ListAPIView):
@@ -258,6 +257,7 @@ class OrderTrackingView(generics.ListAPIView):
         return order.tracking_history.all().order_by("created_at")
 
 
+
 # order tracking by order number 
 class OrderTrackingView(generics.RetrieveAPIView):
     serializer_class = OrderTrackingSerializer
@@ -266,24 +266,34 @@ class OrderTrackingView(generics.RetrieveAPIView):
     def get_object(self):
         order_identifier = self.kwargs.get("order_identifier")  # e.g., "ORD-20250929223618-1e874b"
         
-        # Get the order based on order_number
+        # Get the order
         order = get_object_or_404(Order, order_number=order_identifier, user=self.request.user)
-
-        # Get all tracking records for this order (optional: latest first)
-        tracking_qs = OrderTracking.objects.filter(order=order).select_related(
-            "updated_by", "order", "order__user", "order__shipping_address"
-        ).order_by("-created_at")
-
-        if not tracking_qs.exists():
-            # Optionally, create initial tracking if missing
+        
+        # Try to get the latest tracking record
+        tracking = (
+            OrderTracking.objects.filter(order=order)
+            .select_related("updated_by", "order", "order__user", "order__shipping_address")
+            .order_by("-created_at")
+            .first()
+        )
+        
+        # If no tracking exists, create initial
+        if not tracking:
             tracking = OrderTracking.objects.create(
                 order=order,
-                status="PENDING",
+                status=OrderStatus.PENDING,
                 note="Order automatically created"
             )
-            tracking_qs = OrderTracking.objects.filter(order=order).order_by("-created_at")
-
-        return tracking_qs.first()  # Retrieve latest tracking entry
+        
+        # Create new tracking record if order_status differs from latest tracking
+        if tracking.status != order.order_status:
+            tracking = OrderTracking.objects.create(
+                order=order,
+                status=order.order_status,
+                note=f"Order status updated to '{order.order_status}'"
+            )
+        
+        return tracking       
 
 
 

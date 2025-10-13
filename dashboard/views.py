@@ -11,7 +11,6 @@ from django.db.models.functions import TruncWeek, TruncMonth, TruncYear
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
-
 from accounts.models import User
 from b2c.orders.models import Order, OrderItem
 from b2c.reviews.models import Review
@@ -19,7 +18,7 @@ from b2c.products.models import Products
 from visitors.models import Visitor
 from b2c.user_profile.models import UserProfile
 import phonenumbers
-
+from b2c.orders.models import OrderStatus
 
 class DashboardOverview(APIView):
     permission_classes = [permissions.IsAdminUser]
@@ -38,7 +37,8 @@ class DashboardOverview(APIView):
             total_income = orders.aggregate(total=Sum("total_amount"))["total"] or Decimal("0.00")
             total_sales = order_items.count()
             total_new_customers = users.count()
-            total_orders_completed = orders.filter(order_status="DELIVERED").count()
+            # total_orders_completed = orders.filter(order_status="DELIVERED").count()
+            total_orders_completed = orders.filter(order_status=OrderStatus.DELIVERED).count()
 
             # Choose truncate function
             if period == "weekly":
@@ -64,12 +64,13 @@ class DashboardOverview(APIView):
 
             # Completed orders grouped by period
             completed_data = (
-                orders.filter(order_status="DELIVERED")
-                      .annotate(period=truncate_func("created_at"))
-                      .values("period")
-                      .annotate(completed_orders=Count("id"))
-                      .order_by("period")
-            )
+                orders.filter(order_status=OrderStatus.DELIVERED)
+                    .annotate(period=truncate_func("created_at"))
+                    .values("period")
+                    .annotate(completed_orders=Count("id"))
+                    .order_by("period")
+                )
+
             completed_map = {d["period"].date(): d["completed_orders"] for d in completed_data}
 
             # Visitors grouped by period

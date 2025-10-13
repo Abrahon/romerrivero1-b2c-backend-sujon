@@ -67,85 +67,160 @@ class CouponSerializer(serializers.ModelSerializer):
 
 
 
+# class ApplyCouponSerializer(serializers.Serializer):
+#     code = serializers.CharField()
+#     product_ids = serializers.ListField(
+#         child=serializers.IntegerField(), required=True
+#     )
+
+#     def validate(self, attrs):
+#         code = attrs.get("code")
+#         product_ids = attrs.get("product_ids")
+
+#         # Check coupon existence
+#         try:
+#             coupon = Coupon.objects.get(code=code, active=True)
+#         except Coupon.DoesNotExist:
+#             raise serializers.ValidationError({"code": "Invalid or inactive coupon."})
+
+#         # Expiry check
+#         now = timezone.now()
+#         if coupon.valid_from and coupon.valid_from > now:
+#             raise serializers.ValidationError({"code": "Coupon is not yet valid."})
+#         if coupon.valid_to and coupon.valid_to < now:
+#             raise serializers.ValidationError({"code": "Coupon has expired."})
+
+#         # Product validation
+#         products = Products.objects.filter(id__in=product_ids)
+#         if products.count() != len(product_ids):
+#             raise serializers.ValidationError({"product_ids": "One or more product IDs are invalid."})
+
+#         # Restriction checks
+#         if coupon.products.exists():
+#             allowed_ids = set(coupon.products.values_list("id", flat=True))
+#             for pid in product_ids:
+#                 if pid not in allowed_ids:
+#                     raise serializers.ValidationError({
+#                         "product_ids": f"Coupon not valid for product {pid}."
+#                     })
+#         if coupon.categories.exists():
+#             allowed_cats = set(coupon.categories.values_list("id", flat=True))
+#             for product in products:
+#                 if product.category_id not in allowed_cats:
+#                     raise serializers.ValidationError({
+#                         "product_ids": f"Coupon not valid for category of product {product.id}."
+#                     })
+
+#         # ✅ Calculate total amount based on discounted_price if present, else original price
+#         total_amount = Decimal("0.00")
+#         for p in products:
+#             base_price = getattr(p, "discounted_price", None) or p.price
+#             total_amount += base_price
+
+#         # Apply coupon on top of total_amount
+#         if coupon.discount_type == "percentage":
+#             coupon_discount = (total_amount * Decimal(coupon.discount_value) / 100)
+#         else:  # fixed
+#             coupon_discount = Decimal(coupon.discount_value)
+
+#         final_amount = max(total_amount - coupon_discount, Decimal("0.00"))
+
+#         # Save validated data
+#         attrs["coupon"] = coupon
+#         attrs["products"] = products
+#         attrs["total_amount"] = total_amount
+#         attrs["coupon_discount_value"] = coupon_discount
+#         attrs["final_amount"] = final_amount
+
+#         return attrs
+
+#     def create(self, validated_data):
+#         coupon = validated_data["coupon"]
+#         user = self.context["request"].user
+
+#         # Record redemption to prevent duplicates
+#         CouponRedemption.objects.get_or_create(coupon=coupon, user=user)
+
+#         return {
+#             "message": f"Coupon applied successfully! You get {validated_data['coupon_discount_value']} {coupon.discount_type} discount.",
+#             "discount_type": coupon.discount_type,
+#             "coupon_discount_value": str(validated_data["coupon_discount_value"]),
+#             "total_amount": str(validated_data["total_amount"]),
+#             "final_amount": str(validated_data["final_amount"]),
+#             "applied_products": [p.id for p in validated_data["products"]]
+#         }
+
+
+# for multiple product an dqunatity
 class ApplyCouponSerializer(serializers.Serializer):
     code = serializers.CharField()
-    product_ids = serializers.ListField(
-        child=serializers.IntegerField(), required=True
+    products = serializers.ListField(
+        child=serializers.DictField(child=serializers.IntegerField()), required=True
     )
 
     def validate(self, attrs):
         code = attrs.get("code")
-        product_ids = attrs.get("product_ids")
+        products_data = attrs.get("products")
 
-        # Check coupon existence
+        product_ids = [p["id"] for p in products_data if "id" in p]
+
         try:
             coupon = Coupon.objects.get(code=code, active=True)
         except Coupon.DoesNotExist:
             raise serializers.ValidationError({"code": "Invalid or inactive coupon."})
 
-        # Expiry check
         now = timezone.now()
         if coupon.valid_from and coupon.valid_from > now:
             raise serializers.ValidationError({"code": "Coupon is not yet valid."})
         if coupon.valid_to and coupon.valid_to < now:
             raise serializers.ValidationError({"code": "Coupon has expired."})
 
-        # Product validation
         products = Products.objects.filter(id__in=product_ids)
         if products.count() != len(product_ids):
-            raise serializers.ValidationError({"product_ids": "One or more product IDs are invalid."})
+            raise serializers.ValidationError({"products": "One or more product IDs are invalid."})
 
-        # Restriction checks
         if coupon.products.exists():
             allowed_ids = set(coupon.products.values_list("id", flat=True))
             for pid in product_ids:
                 if pid not in allowed_ids:
                     raise serializers.ValidationError({
-                        "product_ids": f"Coupon not valid for product {pid}."
+                        "products": f"Coupon not valid for product {pid}."
                     })
+
         if coupon.categories.exists():
             allowed_cats = set(coupon.categories.values_list("id", flat=True))
             for product in products:
                 if product.category_id not in allowed_cats:
                     raise serializers.ValidationError({
-                        "product_ids": f"Coupon not valid for category of product {product.id}."
+                        "products": f"Coupon not valid for category of product {product.id}."
                     })
 
-        # ✅ Calculate total amount based on discounted_price if present, else original price
         total_amount = Decimal("0.00")
+        product_quantities = {}  # 🟩 FIX: store quantity per product ID
+
+        for p in products_data:
+            product_quantities[p["id"]] = p.get("quantity", 1)  # default to 1
+
         for p in products:
             base_price = getattr(p, "discounted_price", None) or p.price
-            total_amount += base_price
+            quantity = product_quantities.get(p.id, 1)  # 🟩 FIX: get actual quantity
+            total_amount += Decimal(base_price) * quantity
 
-        # Apply coupon on top of total_amount
         if coupon.discount_type == "percentage":
             coupon_discount = (total_amount * Decimal(coupon.discount_value) / 100)
-        else:  # fixed
+        else:
             coupon_discount = Decimal(coupon.discount_value)
 
         final_amount = max(total_amount - coupon_discount, Decimal("0.00"))
 
-        # Save validated data
-        attrs["coupon"] = coupon
-        attrs["products"] = products
-        attrs["total_amount"] = total_amount
-        attrs["coupon_discount_value"] = coupon_discount
-        attrs["final_amount"] = final_amount
+        # 🟩 FIX: include product quantities in validated data
+        attrs.update({
+            "coupon": coupon,
+            "products": products,
+            "total_amount": total_amount,
+            "coupon_discount_value": coupon_discount,
+            "final_amount": final_amount,
+            "product_quantities": product_quantities,  # 🟩 store for view use
+        })
 
         return attrs
-
-    def create(self, validated_data):
-        coupon = validated_data["coupon"]
-        user = self.context["request"].user
-
-        # Record redemption to prevent duplicates
-        CouponRedemption.objects.get_or_create(coupon=coupon, user=user)
-
-        return {
-            "message": f"Coupon applied successfully! You get {validated_data['coupon_discount_value']} {coupon.discount_type} discount.",
-            "discount_type": coupon.discount_type,
-            "coupon_discount_value": str(validated_data["coupon_discount_value"]),
-            "total_amount": str(validated_data["total_amount"]),
-            "final_amount": str(validated_data["final_amount"]),
-            "applied_products": [p.id for p in validated_data["products"]]
-        }

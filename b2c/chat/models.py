@@ -41,7 +41,7 @@ class Message(models.Model):
 
 
 class TrainData(TimeStampedModel):
-    id = models.AutoField(primary_key=True)  # normal auto ID
+    id = models.AutoField(primary_key=True)  
     category = models.CharField(max_length=100)
     context = models.CharField(max_length=255)
     question = models.TextField()

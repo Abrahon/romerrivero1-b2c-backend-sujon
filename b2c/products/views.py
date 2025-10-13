@@ -30,7 +30,7 @@ from .models import Products, ProductStatus
 from django.db.models import Q, Avg, Value
 from rest_framework import status, permissions
 from django.db.models import Avg, FloatField
-
+from difflib import SequenceMatcher
 logger = logging.getLogger(__name__)
 
 # -------------------------
@@ -253,8 +253,6 @@ class UserCategoryProductListView(generics.ListAPIView):
 
 
 # ------------------------
-
-
 class TopProductsView(generics.ListAPIView):
     serializer_class = ProductSerializer
     permission_classes = [permissions.AllowAny]
@@ -431,22 +429,26 @@ class CategoryProductFilterView(APIView):
                 return Response({"error": "Invalid max_price"}, status=status.HTTP_400_BAD_REQUEST)
     
 
+        # ⭐ Rating filter
+        rating_param = request.query_params.get("rating") 
 
-        # ⭐ Rating filters
-        try:
-            if min_rating:
-                min_rating_val = float(min_rating)
-                products = products.filter(average_rating__gte=min_rating_val)
 
-                # Exclude unrated if looking for 1+ rating
-                if min_rating_val > 0:
-                    products = products.exclude(average_rating=0.0)
+        if rating_param:
+            try:
+                rating_val = float(rating_param)
 
-            if max_rating:
-                max_rating_val = float(max_rating)
-                products = products.filter(average_rating__lte=max_rating_val)
-        except ValueError:
-            return Response({"error": "Invalid rating filter"}, status=status.HTTP_400_BAD_REQUEST)
+                if rating_val >= 5:
+                    # Only show exact 5.0 products
+                    products = products.filter(average_rating__gte=5.0)
+                else:
+                    # Show products within the clicked rating range, e.g., 4 → 4.0 ≤ rating < 5.0
+                    products = products.filter(
+                        average_rating__gte=rating_val,
+                        average_rating__lt=rating_val + 1
+                    )
+            except ValueError:
+                return Response({"error": "Invalid rating filter"}, status=status.HTTP_400_BAD_REQUEST)
+
 
         # ↕ Sorting
         if price_sort:
@@ -470,11 +472,17 @@ class CategoryProductFilterView(APIView):
 # ===== PRODUCT SEARCH/UPLOAD CSV =====
 # -------------------------
 
+
+def similar(a, b):
+    """Helper function to check similarity ratio between two strings."""
+    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
+
+
 class ProductSearchFilterView(APIView):
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [permissions.AllowAny]  
 
     def get(self, request):
-        query = request.query_params.get("q")
+        query = request.query_params.get("q", "")
         category_param = request.query_params.get("category")
         min_price = request.query_params.get("min_price")
         max_price = request.query_params.get("max_price")
@@ -482,20 +490,37 @@ class ProductSearchFilterView(APIView):
         name_sort = request.query_params.get("name_sort")
         min_rating = request.query_params.get("min_rating")
         max_rating = request.query_params.get("max_rating")
-        status_param = request.query_params.get("status") 
-        products = Products.objects.all().annotate(
-       average_rating=Avg("reviews__rating", output_field=FloatField())
-      )
+        status_param = request.query_params.get("status")
 
+        # 🧮 Base queryset with average rating
         products = Products.objects.all().annotate(
-    average_rating=Coalesce(Avg("reviews__rating", output_field=FloatField()), Value(0.0), output_field=FloatField())
-)
-
-        # 🔎 Search by title or description
-        if query:
-            products = products.filter(
-                Q(title__icontains=query) | Q(description__icontains=query)
+            average_rating=Coalesce(
+                Avg("reviews__rating", output_field=FloatField()), 
+                Value(0.0), 
+                output_field=FloatField()
             )
+        )
+
+        # 🔍 Smart Search (multi-word + typo tolerance)
+        if query:
+            keywords = query.split()
+            matched_ids = set()
+
+            for product in products:
+                title = product.title.lower()
+                desc = product.description.lower() if product.description else ""
+
+                for word in keywords:
+                    # Fuzzy match or partial inclusion
+                    if (
+                        word.lower() in title
+                        or word.lower() in desc
+                        or similar(word, title) > 0.7  # "sumsang" → "samsung"
+                    ):
+                        matched_ids.add(product.id)
+                        break  # stop after one match per product
+
+            products = products.filter(id__in=matched_ids)
 
         # 📂 Category filter (id or name)
         if category_param:
@@ -516,25 +541,21 @@ class ProductSearchFilterView(APIView):
                 products = products.filter(price__lte=float(max_price))
             except ValueError:
                 return Response({"error": "Invalid max_price"}, status=status.HTTP_400_BAD_REQUEST)
-        
-         # ⚡ Status filter
+
+        # ⚡ Status filter
         if status_param:
             if status_param.lower() in [ProductStatus.ACTIVE, ProductStatus.INACTIVE]:
                 products = products.filter(status=status_param.lower())
             else:
                 return Response({"error": "Invalid status filter"}, status=status.HTTP_400_BAD_REQUEST)
 
-
         # ⭐ Rating filters
         try:
             if min_rating:
                 min_rating_val = float(min_rating)
                 products = products.filter(average_rating__gte=min_rating_val)
-
-                # Exclude unrated if looking for 1+ rating
                 if min_rating_val > 0:
                     products = products.exclude(average_rating=0.0)
-
             if max_rating:
                 max_rating_val = float(max_rating)
                 products = products.filter(average_rating__lte=max_rating_val)
@@ -547,16 +568,14 @@ class ProductSearchFilterView(APIView):
         elif name_sort:
             products = products.order_by("title" if name_sort.lower() == "asc" else "-title")
         else:
-            products = products.order_by("-id")  # default newest first
+            products = products.order_by("-id") 
 
         # ✅ Serialize results
         serializer = ProductSerializer(products, many=True, context={"request": request})
-
-        return Response({
-            "count": products.count(),
-            "results": serializer.data
-        }, status=status.HTTP_200_OK)
-    
+        return Response(
+            {"count": products.count(), "results": serializer.data},
+            status=status.HTTP_200_OK,
+        )
 
 
 # related product view
