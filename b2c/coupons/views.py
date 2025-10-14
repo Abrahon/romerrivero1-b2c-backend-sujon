@@ -95,8 +95,48 @@ class CouponRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 # coupon disccount logic for multiple products an dqunatity
 
 # ✅ views.py
+# class ApplyCouponView(generics.GenericAPIView):
+#     serializer_class = ApplyCouponSerializer
+
+#     def post(self, request, *args, **kwargs):
+#         serializer = self.get_serializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+
+#         coupon = serializer.validated_data["coupon"]
+#         products = serializer.validated_data["products"]
+#         product_quantities = serializer.validated_data["product_quantities"]  # 🟩 FIX: retrieve stored quantities
+
+#         total_amount = Decimal("0.00")
+#         for p in products:
+            
+#             product_price = getattr(p, "discounted_price", None) or p.price
+#             quantity = product_quantities.get(p.id, 1)  # 🟩 FIX: use quantity from serializer
+#             total_amount += Decimal(product_price) * quantity
+
+#         if coupon.discount_type == "percentage":
+#             discount_amount = (total_amount * Decimal(coupon.discount_value)) / Decimal("100")
+#         else:
+#             discount_amount = Decimal(coupon.discount_value)
+
+#         final_amount = max(total_amount - discount_amount, Decimal("0.00"))
+
+#         CouponRedemption.objects.get_or_create(coupon=coupon, user=request.user)
+
+#         return Response({
+#             "message": f"Coupon applied successfully! You get {coupon.discount_value} {coupon.discount_type} discount.",
+#             "discount_type": coupon.discount_type,
+#             "coupon_discount_value": str(discount_amount),
+#             "total_amount": str(total_amount),
+#             "final_amount": str(final_amount),
+#             "applied_products": [
+#                 {"id": p.id, "quantity": product_quantities.get(p.id, 1)} for p in products  # 🟩 FIX: show quantities in response
+#             ],
+#         }, status=status.HTTP_200_OK)
+
+
 class ApplyCouponView(generics.GenericAPIView):
     serializer_class = ApplyCouponSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -104,20 +144,40 @@ class ApplyCouponView(generics.GenericAPIView):
 
         coupon = serializer.validated_data["coupon"]
         products = serializer.validated_data["products"]
-        product_quantities = serializer.validated_data["product_quantities"]  # 🟩 FIX: retrieve stored quantities
+        product_quantities = serializer.validated_data["product_quantities"]
 
         total_amount = Decimal("0.00")
+
+        # 🟩 FIX: loop through ALL products and use correct price * quantity
+        product_list = []
         for p in products:
             product_price = getattr(p, "discounted_price", None) or p.price
-            quantity = product_quantities.get(p.id, 1)  # 🟩 FIX: use quantity from serializer
-            total_amount += Decimal(product_price) * quantity
+            print("product price",product_price)
+            quantity = Decimal(product_quantities.get(p.id, 1))
+            print("quantity",quantity)
+            subtotal = Decimal(product_price) * quantity
+            print("subtotal",subtotal)
+            total_amount += subtotal
 
+            # 🟩 include full product info in response
+            product_list.append({
+                "id": p.id,
+                "title": p.title,
+                "price": str(product_price),
+                "quantity": int(quantity),
+                "subtotal": str(subtotal)
+            })
+
+        # 🟩 FIX: Apply correct discount
         if coupon.discount_type == "percentage":
             discount_amount = (total_amount * Decimal(coupon.discount_value)) / Decimal("100")
+            print("discount amount",discount_amount)
         else:
             discount_amount = Decimal(coupon.discount_value)
+            print("discount amount",discount_amount)
 
         final_amount = max(total_amount - discount_amount, Decimal("0.00"))
+        print("final amount",final_amount)              
 
         CouponRedemption.objects.get_or_create(coupon=coupon, user=request.user)
 
@@ -127,7 +187,5 @@ class ApplyCouponView(generics.GenericAPIView):
             "coupon_discount_value": str(discount_amount),
             "total_amount": str(total_amount),
             "final_amount": str(final_amount),
-            "applied_products": [
-                {"id": p.id, "quantity": product_quantities.get(p.id, 1)} for p in products  # 🟩 FIX: show quantities in response
-            ],
+            "applied_products": product_list,
         }, status=status.HTTP_200_OK)
