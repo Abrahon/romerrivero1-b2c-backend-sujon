@@ -5,10 +5,26 @@ from rest_framework.exceptions import ValidationError, NotFound
 from .models import CartItem
 from .serializers import CartItemSerializer
 from rest_framework.parsers import MultiPartParser, FormParser
+from django.db.models import Q
 
 from rest_framework import generics, permissions
 from .models import CartItem
 from .serializers import CartItemSerializer
+from rest_framework import serializers
+
+
+
+# class CartItemListCreateView(generics.ListCreateAPIView):
+#     serializer_class = CartItemSerializer
+#     permission_classes = [permissions.IsAuthenticated]
+#     pagination_class = None
+
+#     def get_queryset(self):
+#         return CartItem.objects.filter(user=self.request.user)
+
+#     def perform_create(self, serializer):
+#         # Just call serializer.save() - create() method handles get_or_create and quantity update
+#         serializer.save()
 
 
 
@@ -18,12 +34,34 @@ class CartItemListCreateView(generics.ListCreateAPIView):
     pagination_class = None
 
     def get_queryset(self):
+        # Step 1: Get all cart items for the user
+        cart_items = CartItem.objects.filter(user=self.request.user)
+
+        # Step 2: Remove items where product is out of stock or inactive
+        out_of_stock_items = cart_items.filter(
+            Q(product__available_stock__lte=0) | Q(product__status="inactive")
+        )
+
+        if out_of_stock_items.exists():
+            out_of_stock_items.delete()
+
+        # Step 3: Return updated queryset
         return CartItem.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        # Just call serializer.save() - create() method handles get_or_create and quantity update
-        serializer.save()
+        """
+        Handles add-to-cart logic.
+        If product is already in cart, update quantity.
+        If product is out of stock, prevent adding.
+        """
+        product = serializer.validated_data.get("product")
 
+        # Check stock before adding
+        if product.available_stock <= 0 or product.status == "inactive":
+            raise serializers.ValidationError({"error": "This product is out of stock."})
+
+        # Proceed normally
+        serializer.save(user=self.request.user)
 
 
 

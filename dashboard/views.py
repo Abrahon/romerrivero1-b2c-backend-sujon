@@ -43,7 +43,7 @@ class DashboardOverview(APIView):
             users = User.objects.filter(is_staff=False)
 
             # Total metrics
-            total_income = orders.aggregate(total=Sum("total_amount"))["total"] or Decimal("0.00")
+            total_income = orders.aggregate(total=Sum("final_amount"))["total"] or Decimal("0.00")
             total_sales = order_items.count()
             total_new_customers = users.count()
             # total_orders_completed = orders.filter(order_status="DELIVERED").count()
@@ -66,7 +66,7 @@ class DashboardOverview(APIView):
             revenue_data = (
                 orders.annotate(period=truncate_func("created_at"))
                       .values("period")
-                      .annotate(total_revenue=Sum("total_amount"))
+                      .annotate(total_revenue=Sum("final_amount"))
                       .order_by("period")
             )
             revenue_map = {d["period"].date(): d["total_revenue"] for d in revenue_data}
@@ -122,7 +122,7 @@ class DashboardOverview(APIView):
                 "id", "product__title", "user__name", "user__email", "rating", "comment", "created_at"
             )
             recent_orders = orders.order_by("-created_at")[:5].values(
-                "id", "order_number", "user__name", "user__email", "total_amount", "order_status", "created_at"
+                "id", "order_number", "user__name", "user__email", "final_amount", "order_status", "created_at"
             )
 
             # Best-selling products

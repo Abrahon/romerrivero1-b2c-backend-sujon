@@ -385,6 +385,121 @@ class BuyNowSerializer(serializers.Serializer):
         return value
 
     @transaction.atomic
+    # def create(self, validated_data):
+    #     request = self.context.get("request")
+    #     user = request.user
+    #     product = Products.objects.select_for_update().get(id=validated_data["product_id"])
+    #     quantity = validated_data.get("quantity", 1)
+
+    #     # Step 0: Validate stock
+    #     if quantity > product.available_stock:
+    #         raise serializers.ValidationError(f"Only {product.available_stock} items available.")
+
+    #     # Step 1: Handle shipping
+    #     shipping_id = validated_data.get("shipping_id")
+    #     if shipping_id:
+    #         shipping = get_object_or_404(Shipping, id=shipping_id, user=user)
+    #     else:
+    #         shipping = Shipping.objects.create(
+    #             user=user,
+    #             full_name=validated_data.get("full_name", ""),
+    #             phone_no=validated_data.get("phone_no", ""),
+    #             email=validated_data.get("email", ""),
+    #             street_address=validated_data.get("street_address", ""),
+    #             apartment=validated_data.get("apartment", ""),
+    #             floor=validated_data.get("floor", ""),
+    #             city=validated_data.get("city", ""),
+    #             zipcode=validated_data.get("zipcode", ""),
+    #         )
+
+    #     # Step 2: Determine product price
+    #     product_price = getattr(product, "discounted_price", None)
+    #     if product_price is None:
+    #         product_price = product.price
+
+    #     total_amount = Decimal(product.price) * quantity          # original price total
+    #     discounted_amount = Decimal(product_price) * quantity    # price with product discount
+    #     final_amount = discounted_amount                          # before coupon
+
+    #     # Step 3: Apply coupon if provided
+    #     coupon_code = validated_data.get("coupon_code")
+    #     coupon = None
+    #     if coupon_code:
+    #         try:
+    #             coupon = Coupon.objects.get(code=coupon_code, active=True)
+    #             now = timezone.now()
+    #             if coupon.valid_from and coupon.valid_from > now:
+    #                 raise serializers.ValidationError("Coupon is not yet valid.")
+    #             if coupon.valid_to and coupon.valid_to < now:
+    #                 raise serializers.ValidationError("Coupon has expired.")
+
+    #             # Coupon base amount logic
+    #             base_amount_for_coupon = discounted_amount if getattr(product, "discounted_price", None) else total_amount
+
+    #             if coupon.discount_type == "percentage":
+    #                 discount_amount = (base_amount_for_coupon * Decimal(coupon.discount_value)) / Decimal("100")
+    #             else:
+    #                 discount_amount = Decimal(coupon.discount_value)
+
+    #             final_amount = base_amount_for_coupon - discount_amount
+    #             final_amount = max(final_amount, Decimal("0.00"))
+
+    #             # Record coupon redemption
+    #             CouponRedemption.objects.get_or_create(coupon=coupon, user=user)
+
+    #         except Coupon.DoesNotExist:
+    #             raise serializers.ValidationError("Invalid coupon code.")
+
+    #     if final_amount <= 0:
+    #         raise serializers.ValidationError("Final amount is zero or negative. Cannot proceed to checkout.")
+
+        # Step 4: Create order
+        # order = Order.objects.create(
+        #     user=user,
+        #     shipping_address=shipping,
+        #     total_amount=total_amount,
+        #     discounted_amount=discounted_amount,
+        #     final_amount=final_amount,
+        #     payment_method=validated_data["payment_method"],
+            
+        #     # ✅ Fix payment + order statuses
+        #     payment_status="pending" if validated_data["payment_method"] == "ONLINE" else "success",
+        #     order_status="PENDING" if validated_data["payment_method"] == "ONLINE" else "PROCESSING",
+            
+        #     coupon=coupon
+        # )
+
+
+        # # Step 5: Create OrderItem
+        # OrderItem.objects.create(
+        #     order=order,
+        #     product=product,
+        #     quantity=quantity,
+        #     price=product_price,
+        # )
+
+        # # Step 6: Reduce stock
+        # product.available_stock -= quantity
+        # product.save(update_fields=["available_stock"])
+
+        # # Step 7: Notifications
+        # Notification.objects.create(
+        #     user=user,
+        #     title="Order Placed",
+        #     message=f"Your order {order.order_number} has been placed successfully.",
+        # )
+
+        # admins = User.objects.filter(is_staff=True)
+        # for admin in admins:
+        #     Notification.objects.create(
+        #         user=admin,
+        #         title="New Order",
+        #         message=f"New order {order.order_number} placed by {user.email}.",
+        #     )
+
+        # return order
+
+           
     def create(self, validated_data):
         request = self.context.get("request")
         user = request.user
@@ -413,13 +528,11 @@ class BuyNowSerializer(serializers.Serializer):
             )
 
         # Step 2: Determine product price
-        product_price = getattr(product, "discounted_price", None)
-        if product_price is None:
-            product_price = product.price
+        product_price = getattr(product, "discounted_price", product.price)
 
-        total_amount = Decimal(product.price) * quantity          # original price total
-        discounted_amount = Decimal(product_price) * quantity    # price with product discount
-        final_amount = discounted_amount                          # before coupon
+        total_amount = Decimal(product.price) * quantity         
+        discounted_amount = Decimal(product_price) * quantity    
+        final_amount = discounted_amount                         
 
         # Step 3: Apply coupon if provided
         coupon_code = validated_data.get("coupon_code")
@@ -453,24 +566,36 @@ class BuyNowSerializer(serializers.Serializer):
         if final_amount <= 0:
             raise serializers.ValidationError("Final amount is zero or negative. Cannot proceed to checkout.")
 
-        # Step 4: Create order
+        # Step 4: Determine payment and order statuses
+        payment_method = validated_data["payment_method"]
+        if payment_method == "ONLINE":
+            is_paid = False            
+            payment_status = "pending"
+            order_status = "PENDING"
+        elif payment_method == "COD":
+            is_paid = False            
+            payment_status = "pending"
+            order_status = "PENDING"
+        else:
+            is_paid = False
+            payment_status = "pending"
+            order_status = "PENDING"
+
+        # Step 5: Create order
         order = Order.objects.create(
             user=user,
             shipping_address=shipping,
             total_amount=total_amount,
             discounted_amount=discounted_amount,
             final_amount=final_amount,
-            payment_method=validated_data["payment_method"],
-            
-            # ✅ Fix payment + order statuses
-            payment_status="pending" if validated_data["payment_method"] == "ONLINE" else "success",
-            order_status="PENDING" if validated_data["payment_method"] == "ONLINE" else "PROCESSING",
-            
+            payment_method=payment_method,
+            is_paid=is_paid,
+            payment_status=payment_status,
+            order_status=order_status,
             coupon=coupon
         )
 
-
-        # Step 5: Create OrderItem
+        # Step 6: Create OrderItem
         OrderItem.objects.create(
             order=order,
             product=product,
@@ -478,11 +603,11 @@ class BuyNowSerializer(serializers.Serializer):
             price=product_price,
         )
 
-        # Step 6: Reduce stock
+        # Step 7: Reduce stock
         product.available_stock -= quantity
         product.save(update_fields=["available_stock"])
 
-        # Step 7: Notifications
+        # Step 8: Notifications
         Notification.objects.create(
             user=user,
             title="Order Placed",
@@ -498,3 +623,5 @@ class BuyNowSerializer(serializers.Serializer):
             )
 
         return order
+
+

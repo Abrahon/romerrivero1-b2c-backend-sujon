@@ -252,20 +252,13 @@ class UserCategoryProductListView(generics.ListAPIView):
 
 
 
-# ------------------------
+
+
 class TopProductsView(generics.ListAPIView):
     serializer_class = ProductSerializer
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        limit = self.request.query_params.get("limit", 10)
-        try:
-            limit = int(limit)
-            if limit <= 0:
-                raise ValueError
-        except ValueError:
-            raise ValidationError({"error": "Invalid limit value. Must be a positive integer."})
-
         # Annotate average rating
         queryset = Products.objects.annotate(
             average_rating=Coalesce(
@@ -275,7 +268,8 @@ class TopProductsView(generics.ListAPIView):
             )
         ).order_by('-average_rating', '-id')
 
-        return queryset[:limit]  # DRF will automatically serialize with many=True
+        return queryset
+
 
 
 # ------------------------

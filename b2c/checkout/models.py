@@ -26,5 +26,8 @@ class Shipping(TimeStampedModel):
         default=ShippingStatusChoices.PENDING
     )
 
+  
+
+
     def __str__(self):
         return f"{self.full_name} - {self.city}"

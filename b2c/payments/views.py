@@ -14,6 +14,7 @@ from rest_framework.permissions import IsAuthenticated
 from datetime import timedelta
 from django.utils import timezone
 # from b2c.orders.models import Order, Notification
+from b2c.checkout.models import  ShippingStatusChoices
 
 logger = logging.getLogger(__name__)
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -100,11 +101,19 @@ class StripeWebhookView(APIView):
                 order = Order.objects.get(stripe_checkout_session_id=session_id)
 
                 # Avoid double processing
+                # if not order.is_paid:
+                #     order.is_paid = True
+                #     order.payment_status = "paid"
+                #     order.order_status = "PROCESSING"
+                #     # order.status= ShippingStatusChoices.SUCCESS  
+                #     order.estimated_delivery = timezone.now() + timedelta(days=3)
+                
+                 # ✅ Avoid double processing
                 if not order.is_paid:
                     order.is_paid = True
-                    order.payment_status = "paid"
-                    order.order_status = "PROCESSING"
-                    order.estimated_delivery = timezone.now() + timedelta(days=5)
+                    order.payment_status = "paid"          # mark payment success
+                    order.order_status = "PROCESSING"      # or ShippingStatusChoices.PROCESSING
+                    order.estimated_delivery = timezone.now() + timedelta(days=3)
 
                     # ✅ Save everything in one call
                     order.save(
@@ -112,6 +121,7 @@ class StripeWebhookView(APIView):
                             "is_paid",
                             "payment_status",
                             "order_status",
+                            # "status",
                             "estimated_delivery",
                         ]
                     )
@@ -125,6 +135,7 @@ class StripeWebhookView(APIView):
                             f"Estimated delivery: {order.estimated_delivery.strftime('%Y-%m-%d')}"
                         ),
                     )
+                    # logger.info(f"✅ Order {order.id} marked as SHIPPED after payment.")
 
             except Order.DoesNotExist:
                 logger.error(f"Stripe session ID {session_id} not linked to any order")
