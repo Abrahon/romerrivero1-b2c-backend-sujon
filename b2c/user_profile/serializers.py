@@ -9,17 +9,17 @@ PHONE_REGEX = re.compile(r'^\+?\d{7,15}$')
 class UserProfileSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(source="user.name", read_only=True)
     profile_image_url = serializers.SerializerMethodField()
-    email = serializers.CharField(source="user.email", read_only=True)
+    contact_email = serializers.CharField(source="user.email", read_only=True)
 
     class Meta:
         model = UserProfile
         fields = [
-            'email', 'full_name', 'profile_image', 'profile_image_url',
+            'full_name', 'profile_image', 'profile_image_url',
             'gender', 'date_of_birth', 'country', 'phone_number',
             'contact_email', 'address', 'emergency_contact_name',
             'emergency_contact_phone', 'emergency_contact_relationship'
         ]
-        read_only_fields = ['email']
+        read_only_fields = ['contact_email']
 
     def get_profile_image_url(self, obj):
         if obj.profile_image:

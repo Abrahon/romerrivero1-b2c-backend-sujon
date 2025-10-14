@@ -107,14 +107,6 @@ DATABASES = {
 
 
 
-# DATABASES = {
-#     'default': dj_database_url.config(
-#         default=f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}",
-#         conn_max_age=600,
-#         ssl_require=os.getenv('DATABASE_URL') is not None
-#     )
-# }
-
 
 
 CHANNEL_LAYERS = {

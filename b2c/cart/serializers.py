@@ -1,4 +1,3 @@
-
 from rest_framework import serializers
 from b2c.products.models import Products
 from .models import CartItem

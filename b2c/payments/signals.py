@@ -16,8 +16,8 @@ def send_payment_success_notification(sender, instance, **kwargs):
         # Build notification message
         message = (
             f"Payment successful for Order ID {instance.id}. "
-            f"Amount: {instance.total_amount}. "
-            f"User: {user.email}"  # or use user.name if preferred
+            f"Amount: {instance.final_amount}. "
+            f"User: {user.email}" 
         )
 
         # Use email or user.id to create a unique group name

@@ -1,13 +1,15 @@
-# b2c/dashboard/views.py
+
+
 
 from datetime import datetime, timedelta, date
 from decimal import Decimal
 from collections import Counter
-
+from b2c.user_profile.models import UserProfile  
 from django.utils.timezone import now
 from django.db.models import Sum, Count, F
 from django.db.models.functions import TruncWeek, TruncMonth, TruncYear
-
+import phonenumbers
+from phonenumbers import geocoder
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
@@ -19,6 +21,13 @@ from visitors.models import Visitor
 from b2c.user_profile.models import UserProfile
 import phonenumbers
 from b2c.orders.models import OrderStatus
+
+def get_country_from_phone(phone):
+    try:
+        parsed = phonenumbers.parse(phone, None)
+        return geocoder.description_for_number(parsed, "en") or "Unknown"
+    except Exception:
+        return "Unknown"
 
 class DashboardOverview(APIView):
     permission_classes = [permissions.IsAdminUser]
@@ -128,7 +137,7 @@ class DashboardOverview(APIView):
                 "total_sales": total_sales,
                 "total_new_customers": total_new_customers,
                 "total_orders_completed": total_orders_completed,
-                "revenue_trend": revenue_trend[::-1],   # oldest -> newest
+                "revenue_trend": revenue_trend[::-1],  
                 "visitors_trend": visitors_trend[::-1],
                 "recent_activity": {
                     "recent_orders": list(recent_orders),
@@ -144,7 +153,7 @@ class DashboardOverview(APIView):
 
 
 
-
+    
 class AnalyticsView(APIView):
     permission_classes = [permissions.IsAdminUser]
     """
@@ -254,21 +263,24 @@ class AnalyticsView(APIView):
                 for item in order_items_qs
             ]
 
-            # -------- Customer by Country (Phone-Based) --------
-            customer_profiles = UserProfile.objects.exclude(phone_number="").values("phone_number")
+                  # -------- Customer by Country (Phone-Based) --------
+
+            customer_profiles = UserProfile.objects.exclude(phone_number__isnull=True).exclude(phone_number__exact="")
             countries = []
-            for entry in customer_profiles:
-                phone = entry["phone_number"]
+
+            for profile in customer_profiles:
+                phone = profile.phone_number
                 try:
-                    parsed = phonenumbers.parse(phone, None)
-                    country = phonenumbers.region_code_for_number(parsed)
-                    if country:
-                        countries.append(country)
+                    parsed = phonenumbers.parse(phone, "BD")  # Use 'BD' as default if no country code
+                    country_name = geocoder.description_for_number(parsed, "en")
+                    if country_name:
+                        countries.append(country_name)
                 except Exception:
                     continue
 
             top_countries = Counter(countries).most_common(10)
             customer_by_country = [{"country": c[0], "count": c[1]} for c in top_countries]
+
 
             # -------- Final Response --------
             data = {

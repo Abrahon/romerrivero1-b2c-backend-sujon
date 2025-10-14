@@ -310,59 +310,6 @@ class StandardResultsSetPagination(PageNumberPagination):
     page_size_query_param = "page_size"
     max_page_size = 100
 
-# # -------------------------------
-# # Admin view: Training data + chat stats
-# # -------------------------------
-# class ChatBotQueryStatsView(generics.ListAPIView):
-#     """
-#     Admin view to show all training data (history) with stats.
-#     Recent conversations/stats remain same as before.
-#     """
-#     serializer_class = TrainDataSerializer
-#     permission_classes = [IsAdminUser]
-#     pagination_class = StandardResultsSetPagination
-
-#     def get_queryset(self):
-#         queryset = TrainData.objects.all().order_by("-id")
-
-#         # Optional search by category, context, question, or AI response
-#         search = self.request.query_params.get("search")
-#         if search:
-#             queryset = queryset.filter(
-#                 Q(category__icontains=search) |
-#                 Q(context__icontains=search) |
-#                 Q(question__icontains=search) |
-#                 Q(ai_response__icontains=search)
-#             )
-#         return queryset
-
-#     def list(self, request, *args, **kwargs):
-#         queryset = self.get_queryset()
-
-#         # Pagination
-#         page = self.paginate_queryset(queryset)
-#         serializer = self.get_serializer(page or queryset, many=True)
-
-#         # Stats section: still based on chat conversations
-#         chat_queryset = ChatBotQuery.objects.all().order_by("-created_at")
-#         total_conversations = chat_queryset.count()
-#         qualified_leads = chat_queryset.filter(
-#             ai_response__iregex=r'qualified|interested|yes'
-#         ).count()
-#         conversation_rate = (qualified_leads / total_conversations * 100) if total_conversations else 0
-#         recent_conversations = chat_queryset[:5]
-#         recent_serializer = ChatBotQuerySerializer(recent_conversations, many=True)
-
-#         response_data = {
-#             "total_conversations": total_conversations,
-#             "qualified_leads": qualified_leads,
-#             "conversation_rate": round(conversation_rate, 2),
-#             "recent_conversations": recent_serializer.data,
-#             "all_training_data": serializer.data  
-#         }
-
-#         return self.get_paginated_response(response_data)
-
 
 class ChatBotQueryStatsView(generics.ListAPIView):
     """
@@ -410,7 +357,7 @@ class ChatBotQueryStatsView(generics.ListAPIView):
             "conversation_rate": round(conversation_rate, 2),
             "recent_conversations": recent_serializer.data,
             "all_training_data": serializer.data,
-            "total_training_data": queryset.count()  # ✅ Added total count of training data
+            "total_training_data": queryset.count()  
         }
 
         return self.get_paginated_response(response_data)
