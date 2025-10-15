@@ -111,8 +111,8 @@ class StripeWebhookView(APIView):
                  # ✅ Avoid double processing
                 if not order.is_paid:
                     order.is_paid = True
-                    order.payment_status = "paid"          # mark payment success
-                    order.order_status = "PROCESSING"      # or ShippingStatusChoices.PROCESSING
+                    order.payment_status = "paid"          
+                    order.order_status = "PROCESSING"      
                     order.estimated_delivery = timezone.now() + timedelta(days=3)
 
                     # ✅ Save everything in one call

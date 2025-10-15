@@ -1,6 +1,3 @@
-
-
-
 from datetime import datetime, timedelta, date
 from decimal import Decimal
 from collections import Counter
@@ -21,7 +18,9 @@ from visitors.models import Visitor
 from b2c.user_profile.models import UserProfile
 import phonenumbers
 from b2c.orders.models import OrderStatus
-
+from django.db.models import Min, Q
+from django.utils import timezone
+from datetime import datetime, date           
 def get_country_from_phone(phone):
     try:
         parsed = phonenumbers.parse(phone, None)
@@ -225,18 +224,85 @@ class AnalyticsView(APIView):
                 orders_in_range = orders_in_range.filter(created_at__year__gte=today.year - 5)
 
             order_stats = {
-                "completed": orders_in_range.filter(order_status="completed").count(),
-                "pending": orders_in_range.filter(order_status="pending").count(),
-                "processing": orders_in_range.filter(order_status="processing").count(),
-                "cancelled": orders_in_range.filter(order_status="cancelled").count(),
+                # "completed": orders_in_range.filter(order_status=OrderStatus.COMPLETED).count(),
+                "pending": orders_in_range.filter(order_status=OrderStatus.PENDING).count(),
+                "processing": orders_in_range.filter(order_status=OrderStatus.PROCESSING).count(),
+                "cancelled": orders_in_range.filter(order_status=OrderStatus.CANCELLED).count(),
+                "completed": orders_in_range.filter(order_status=OrderStatus.DELIVERED).count(),
             }
 
+            # # -------- Customer Segmentation --------
+            # new_customers = User.objects.filter(date_joined__gte=start_date).count()
+            # returning_customers = max(
+            #     orders_in_range.values("user").distinct().count() - new_customers, 0
+            # )
+            # customer_segmentation = {"new": new_customers, "returning": returning_customers}
+
+
             # -------- Customer Segmentation --------
-            new_customers = User.objects.filter(date_joined__gte=start_date).count()
-            returning_customers = max(
-                orders_in_range.values("user").distinct().count() - new_customers, 0
-            )
-            customer_segmentation = {"new": new_customers, "returning": returning_customers}
+            # # New customers: joined within the period
+            # new_customers_qs = User.objects.filter(date_joined__gte=start_date)
+            # new_customers = new_customers_qs.count()
+
+            # # Returning customers: users with at least one previous non-cancelled order
+            # returning_customers_qs = (
+            #     User.objects.filter(
+            #         orders__isnull=False  # 'orders' is the related_name in Order model
+            #     )
+            #     .exclude(orders__order_status=OrderStatus.CANCELLED)
+            #     .distinct()
+            # )
+            # print("returning customers qs",returning_customers_qs)
+            # # Optional: exclude users already counted as new, if you want exclusive segmentation
+            # returning_customers = returning_customers_qs.exclude(id__in=new_customers_qs.values("id")).count()
+            # print("returning customers",returning_customers)
+
+            # customer_segmentation = {
+            #     "new": new_customers,
+            #     "returning": returning_customers
+            # }
+            # -------- Customer Segmentation --------
+
+          
+
+            # timezone-aware start & end
+            if isinstance(start_date, date):
+                start_date_dt = timezone.make_aware(datetime.combine(start_date, datetime.min.time()))
+            else:
+                start_date_dt = timezone.make_aware(start_date) if timezone.is_naive(start_date) else start_date
+
+            if isinstance(today, date):
+                end_date_dt = timezone.make_aware(datetime.combine(today, datetime.max.time()))
+            else:
+                end_date_dt = timezone.make_aware(today) if timezone.is_naive(today) else today
+
+# ... rest of your customer segmentation code
+
+
+            # -------- NEW CUSTOMERS --------
+            new_customers_qs = User.objects.filter(date_joined__gte=start_date_dt, date_joined__lte=end_date_dt)
+            new_customers = new_customers_qs.count()
+
+            # -------- RETURNING CUSTOMERS --------
+            # Users who joined **before** the start date AND have at least one non-cancelled order
+            returning_customers_qs = User.objects.filter(
+                date_joined__lt=start_date_dt,  # joined before the period
+                orders__order_status__in=[OrderStatus.PENDING, OrderStatus.PROCESSING, OrderStatus.DELIVERED]  # exclude cancelled
+            ).distinct()
+            returning_customers = returning_customers_qs.count()
+
+            customer_segmentation = {
+                "new": new_customers,
+                "returning": returning_customers
+            }
+
+            print("New customers:", new_customers)
+            print("Returning customers:", returning_customers)
+
+            
+
+          
+
 
             # -------- Overall Selling (Top Products) --------
             order_items_qs = OrderItem.objects.filter(order__in=orders_in_range).values(

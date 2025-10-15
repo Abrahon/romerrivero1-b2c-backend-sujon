@@ -29,7 +29,8 @@ from b2c.coupons.models import Coupon, CouponRedemption
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from .models import Order, OrderItem
-from b2c.products.serializers import ProductSerializer 
+from b2c.products.serializers import ProductSerializer
+from .enums import OrderStatus, PaymentStatus
 User = get_user_model()
 
 
@@ -360,7 +361,6 @@ class AdminOrderStatusUpdateSerializer(serializers.ModelSerializer):
 
 
 
-
 # buy now serializers
 class BuyNowSerializer(serializers.Serializer):
     product_id = serializers.IntegerField()
@@ -385,6 +385,7 @@ class BuyNowSerializer(serializers.Serializer):
         return value
 
     @transaction.atomic
+
     # def create(self, validated_data):
     #     request = self.context.get("request")
     #     user = request.user
@@ -568,14 +569,15 @@ class BuyNowSerializer(serializers.Serializer):
 
         # Step 4: Determine payment and order statuses
         payment_method = validated_data["payment_method"]
-        if payment_method == "ONLINE":
-            is_paid = False            
-            payment_status = "pending"
-            order_status = "PENDING"
-        elif payment_method == "COD":
-            is_paid = False            
-            payment_status = "pending"
-            order_status = "PENDING"
+        if payment_method == PaymentMethodChoices.ONLINE:
+            is_paid = False
+            payment_status = PaymentStatus.PENDING
+            order_status = OrderStatus.PENDING
+
+        elif payment_method == PaymentMethodChoices.COD:
+            is_paid = False
+            payment_status = PaymentStatus.PENDING
+            order_status = OrderStatus.PROCESSING
         else:
             is_paid = False
             payment_status = "pending"

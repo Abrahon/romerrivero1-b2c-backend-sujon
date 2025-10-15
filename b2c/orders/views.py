@@ -167,11 +167,34 @@ class PlaceOrderView(APIView):
         order.final_amount = final_amount
         order.coupon = coupon
 
+       
+        def is_returning_customer(user):
+            """
+            Returns True if the user has at least one previous order
+            that is not cancelled or rejected.
+            """
+            return Order.objects.filter(user=user).exclude(order_status=OrderStatus.CANCELLED).exists()
+           
+
+        # Order.objects.filter(user=user).exclude(order_status=OrderStatus.CANCELLED).exists()
+        # is_returning_customer = Order.objects.filter(user=user).exclude(order_status=OrderStatus.CANCELLED).exists()
+
+
         # COD orders get delivery date immediately
         if payment_method == "COD":
-            order.estimated_delivery = timezone.now() + timedelta(days=5)
+            order.estimated_delivery = timezone.now() + timedelta(days=3)
 
-        order.save(update_fields=["total_amount", "discounted_amount", "final_amount", "coupon", "estimated_delivery"])
+            order.is_paid = False
+            order.payment_status = "pending"
+            order.order_status = OrderStatus.PENDING 
+
+        order.save(update_fields=["total_amount", "discounted_amount", "final_amount", "coupon", "estimated_delivery", "is_paid", "payment_status", "order_status"])
+        
+
+        
+
+
+        # order.save(update_fields=["total_amount", "discounted_amount", "final_amount", "coupon", "estimated_delivery"])
 
         # Step 5: Clear cart
         cart_items.delete()

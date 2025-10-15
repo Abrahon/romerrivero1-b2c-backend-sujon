@@ -251,6 +251,25 @@ from urllib.parse import unquote
 User = get_user_model()
 
 
+# class GoogleLoginView(APIView):
+#     permission_classes = [AllowAny]
+
+#     def get(self, request):
+#         """
+#         Step 1: Redirect user to Google Auth URL
+#         """
+#         base_url = "https://accounts.google.com/o/oauth2/v2/auth"
+#         params = {
+#             "client_id": settings.GOOGLE_CLIENT_ID,
+#             "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+#             "response_type": "code",
+#             "scope": "openid email profile",
+#             "access_type": "offline",  
+#             "prompt": "consent",       
+#         }
+#         google_auth_url = f"{base_url}?{urlencode(params)}"
+#         return Response({"auth_url": google_auth_url})
+
 class GoogleLoginView(APIView):
     permission_classes = [AllowAny]
 
@@ -259,17 +278,18 @@ class GoogleLoginView(APIView):
         Step 1: Redirect user to Google Auth URL
         """
         base_url = "https://accounts.google.com/o/oauth2/v2/auth"
+       
         params = {
             "client_id": settings.GOOGLE_CLIENT_ID,
             "redirect_uri": settings.GOOGLE_REDIRECT_URI,
             "response_type": "code",
             "scope": "openid email profile",
-            "access_type": "offline",  
-            "prompt": "consent",       
+            "access_type": "offline",
+            "prompt": "consent",      
         }
+        print("settings.GOOGLE_CLIENT_ID", base_url)
         google_auth_url = f"{base_url}?{urlencode(params)}"
         return Response({"auth_url": google_auth_url})
-
 
 
 class GoogleCallbackView(APIView):
