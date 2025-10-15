@@ -278,7 +278,6 @@ class GoogleLoginView(APIView):
         Step 1: Redirect user to Google Auth URL
         """
         base_url = "https://accounts.google.com/o/oauth2/v2/auth"
-       
         params = {
             "client_id": settings.GOOGLE_CLIENT_ID,
             "redirect_uri": settings.GOOGLE_REDIRECT_URI,
@@ -287,7 +286,6 @@ class GoogleLoginView(APIView):
             "access_type": "offline",
             "prompt": "consent",      
         }
-        print("settings.GOOGLE_CLIENT_ID", base_url)
         google_auth_url = f"{base_url}?{urlencode(params)}"
         return Response({"auth_url": google_auth_url})
 

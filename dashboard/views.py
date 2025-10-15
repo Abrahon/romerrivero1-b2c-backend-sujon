@@ -265,30 +265,23 @@ class AnalyticsView(APIView):
 
           
 
-            # timezone-aware start & end
-            if isinstance(start_date, date):
-                start_date_dt = timezone.make_aware(datetime.combine(start_date, datetime.min.time()))
-            else:
-                start_date_dt = timezone.make_aware(start_date) if timezone.is_naive(start_date) else start_date
+    
+            # Timezone-aware today
+            today = timezone.now()
+            start_date = today - timedelta(days=365)  # Example: last 12 months
 
-            if isinstance(today, date):
-                end_date_dt = timezone.make_aware(datetime.combine(today, datetime.max.time()))
-            else:
-                end_date_dt = timezone.make_aware(today) if timezone.is_naive(today) else today
+            # New customers: joined within the period
+            new_customers_qs = User.objects.filter(date_joined__gte=start_date)
+            new_customers_ids = set(new_customers_qs.values_list("id", flat=True))
+            new_customers = len(new_customers_ids)
 
-# ... rest of your customer segmentation code
-
-
-            # -------- NEW CUSTOMERS --------
-            new_customers_qs = User.objects.filter(date_joined__gte=start_date_dt, date_joined__lte=end_date_dt)
-            new_customers = new_customers_qs.count()
-
-            # -------- RETURNING CUSTOMERS --------
-            # Users who joined **before** the start date AND have at least one non-cancelled order
+            # Returning customers: joined before start_date and have at least one non-cancelled order
             returning_customers_qs = User.objects.filter(
-                date_joined__lt=start_date_dt,  # joined before the period
-                orders__order_status__in=[OrderStatus.PENDING, OrderStatus.PROCESSING, OrderStatus.DELIVERED]  # exclude cancelled
+                date_joined__lt=start_date,  
+                orders__order_status__in=[OrderStatus.PROCESSING, OrderStatus.DELIVERED] 
             ).distinct()
+            print("returning customers qs",returning_customers_qs)
+
             returning_customers = returning_customers_qs.count()
 
             customer_segmentation = {
@@ -298,6 +291,7 @@ class AnalyticsView(APIView):
 
             print("New customers:", new_customers)
             print("Returning customers:", returning_customers)
+
 
             
 
