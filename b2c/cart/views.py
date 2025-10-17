@@ -14,19 +14,6 @@ from rest_framework import serializers
 
 
 
-# class CartItemListCreateView(generics.ListCreateAPIView):
-#     serializer_class = CartItemSerializer
-#     permission_classes = [permissions.IsAuthenticated]
-#     pagination_class = None
-
-#     def get_queryset(self):
-#         return CartItem.objects.filter(user=self.request.user)
-
-#     def perform_create(self, serializer):
-#         # Just call serializer.save() - create() method handles get_or_create and quantity update
-#         serializer.save()
-
-
 
 class CartItemListCreateView(generics.ListCreateAPIView):
     serializer_class = CartItemSerializer

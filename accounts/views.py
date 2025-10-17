@@ -30,6 +30,7 @@ from django.conf import settings
 from django.shortcuts import redirect
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenRefreshView
 
 from .serializers import (
     SendOTPSerializer, VerifyOTPSerializer, ResetPasswordSerializer, ChangePasswordSerializer
@@ -232,6 +233,29 @@ class CheckTokenView(APIView):
                 "message": "Invalid or expired token.",
                 "error": str(e)
             }, status=status.HTTP_401_UNAUTHORIZED)
+        
+        
+
+# refresh token     
+class CustomTokenRefreshView(TokenRefreshView):
+    """
+    Refresh the JWT access token using a valid refresh token.
+    """
+    def post(self, request, *args, **kwargs):
+        try:
+            response = super().post(request, *args, **kwargs)
+            return Response({
+                "success": True,
+                "message": "New access token generated successfully.",
+                "tokens": response.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                "success": False,
+                "message": "Invalid or expired refresh token.",
+                "error": str(e)
+            }, status=status.HTTP_401_UNAUTHORIZED)
+
 
 
 # google login 
@@ -250,25 +274,6 @@ from urllib.parse import unquote
 
 User = get_user_model()
 
-
-# class GoogleLoginView(APIView):
-#     permission_classes = [AllowAny]
-
-#     def get(self, request):
-#         """
-#         Step 1: Redirect user to Google Auth URL
-#         """
-#         base_url = "https://accounts.google.com/o/oauth2/v2/auth"
-#         params = {
-#             "client_id": settings.GOOGLE_CLIENT_ID,
-#             "redirect_uri": settings.GOOGLE_REDIRECT_URI,
-#             "response_type": "code",
-#             "scope": "openid email profile",
-#             "access_type": "offline",  
-#             "prompt": "consent",       
-#         }
-#         google_auth_url = f"{base_url}?{urlencode(params)}"
-#         return Response({"auth_url": google_auth_url})
 
 class GoogleLoginView(APIView):
     permission_classes = [AllowAny]

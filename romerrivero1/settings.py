@@ -36,7 +36,10 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',  
     'allauth.socialaccount.providers.facebook',  
-    'allauth.socialaccount.providers.twitter', 
+    'allauth.socialaccount.providers.twitter',
+    # new added for jwt token blacklisting
+    # 'rest_framework',
+    # 'rest_framework_simplejwt.token_blacklist',
 
     "cloudinary",
     "cloudinary_storage",
@@ -249,6 +252,9 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(days=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=15),
+    "ROTATE_REFRESH_TOKENS": True,                   # issue new refresh token each time
+    "BLACKLIST_AFTER_ROTATION": True, 
+    # "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
 
@@ -256,10 +262,6 @@ FRONTEND_REDIRECT_URL = "https://gamerbytes.us/google/callback"
 SESSION_COOKIE_AGE = 600  
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True  
 
-# SIMPLE_JWT = {
-#     "ACCESS_TOKEN_LIFETIME": timedelta(seconds=30),  
-#     "REFRESH_TOKEN_LIFETIME": timedelta(minutes=3),              
-# }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

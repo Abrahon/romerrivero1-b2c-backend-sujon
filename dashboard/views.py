@@ -240,63 +240,28 @@ class AnalyticsView(APIView):
 
 
             # -------- Customer Segmentation --------
-            # # New customers: joined within the period
-            # new_customers_qs = User.objects.filter(date_joined__gte=start_date)
-            # new_customers = new_customers_qs.count()
-
-            # # Returning customers: users with at least one previous non-cancelled order
-            # returning_customers_qs = (
-            #     User.objects.filter(
-            #         orders__isnull=False  # 'orders' is the related_name in Order model
-            #     )
-            #     .exclude(orders__order_status=OrderStatus.CANCELLED)
-            #     .distinct()
-            # )
-            # print("returning customers qs",returning_customers_qs)
-            # # Optional: exclude users already counted as new, if you want exclusive segmentation
-            # returning_customers = returning_customers_qs.exclude(id__in=new_customers_qs.values("id")).count()
-            # print("returning customers",returning_customers)
-
-            # customer_segmentation = {
-            #     "new": new_customers,
-            #     "returning": returning_customers
-            # }
-            # -------- Customer Segmentation --------
-
-          
-
-    
-            # Timezone-aware today
-            today = timezone.now()
-            start_date = today - timedelta(days=365)  # Example: last 12 months
-
             # New customers: joined within the period
             new_customers_qs = User.objects.filter(date_joined__gte=start_date)
-            new_customers_ids = set(new_customers_qs.values_list("id", flat=True))
-            new_customers = len(new_customers_ids)
+            new_customers = new_customers_qs.count()
 
-            # Returning customers: joined before start_date and have at least one non-cancelled order
-            returning_customers_qs = User.objects.filter(
-                date_joined__lt=start_date,  
-                orders__order_status__in=[OrderStatus.PROCESSING, OrderStatus.DELIVERED] 
-            ).distinct()
+            # Returning customers: users with at least one previous non-cancelled order
+            returning_customers_qs = (
+                User.objects.filter(
+                    orders__isnull=False  # 'orders' is the related_name in Order model
+                )
+                .exclude(orders__order_status=OrderStatus.CANCELLED)
+                .distinct()
+            )
             print("returning customers qs",returning_customers_qs)
-
-            returning_customers = returning_customers_qs.count()
+            # Optional: exclude users already counted as new, if you want exclusive segmentation
+            returning_customers = returning_customers_qs.exclude(id__in=new_customers_qs.values("id")).count()
+            print("returning customers",returning_customers)
 
             customer_segmentation = {
                 "new": new_customers,
                 "returning": returning_customers
             }
-
-            print("New customers:", new_customers)
-            print("Returning customers:", returning_customers)
-
-
-            
-
-          
-
+            # -------- Customer Segmentation --------
 
             # -------- Overall Selling (Top Products) --------
             order_items_qs = OrderItem.objects.filter(order__in=orders_in_range).values(

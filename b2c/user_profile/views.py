@@ -96,3 +96,4 @@ class AdminUserProfileListView(generics.ListAPIView):
             return UserProfile.objects.all().order_by('-updated_at')
         except Exception as e:
             return Response({"detail": f"Error fetching profiles: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+          
