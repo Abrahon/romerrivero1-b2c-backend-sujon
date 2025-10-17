@@ -204,50 +204,84 @@ class AdminCreateView(generics.CreateAPIView):
 # check token valiude orn inavlid
 class CheckTokenView(APIView):
     """
-    Check if a JWT access token is valid or invalid.
+    Check if a JWT access token is valid or invalid and return expiry.
     """
-    authentication_classes = [JWTAuthentication]
+    authentication_classes = []  # No authentication required
+    permission_classes = [AllowAny]  # Allow all users
 
     def get(self, request, *args, **kwargs):
-        # Extract token from the "Authorization" header
         auth_header = request.headers.get('Authorization')
 
         if not auth_header or not auth_header.startswith('Bearer '):
-            return Response({"detail": "Authorization header missing or invalid format."},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Authorization header missing or invalid format."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         token = auth_header.split(' ')[1]
-
+        from rest_framework_simplejwt.authentication import JWTAuthentication
         jwt_auth = JWTAuthentication()
+
+        import datetime
+        from rest_framework_simplejwt.exceptions import TokenError
+
         try:
             validated_token = jwt_auth.get_validated_token(token)
             user = jwt_auth.get_user(validated_token)
+
+            # Get expiration timestamp
+            exp_timestamp = validated_token.get('exp')
+            expires_at = datetime.datetime.fromtimestamp(exp_timestamp) if exp_timestamp else None
+
             return Response({
                 "valid": True,
-                "message": "Token is valid.",
-                "user": user.email
+                "email": user.email,
+                "expires_at": expires_at
             }, status=status.HTTP_200_OK)
-        except (InvalidToken, TokenError) as e:
+
+        except TokenError as e:
             return Response({
                 "valid": False,
                 "message": "Invalid or expired token.",
                 "error": str(e)
             }, status=status.HTTP_401_UNAUTHORIZED)
-        
-        
 
-# refresh token     
+        except Exception as e:
+            return Response({
+                "valid": False,
+                "message": "An unexpected error occurred.",
+                "error": str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+ 
+
+    
+# refresh token
 class CustomTokenRefreshView(TokenRefreshView):
     """
-    Refresh the JWT access token using a valid refresh token.
+    Refresh the JWT access token using a valid refresh token
+    and return user info.
     """
+
     def post(self, request, *args, **kwargs):
         try:
             response = super().post(request, *args, **kwargs)
+
+            # Extract refresh token and validate it to get the user
+            refresh_token = request.data.get("refresh")
+            jwt_auth = JWTAuthentication()
+            validated_token = jwt_auth.get_validated_token(response.data.get("access"))
+            user = jwt_auth.get_user(validated_token)
+
             return Response({
                 "success": True,
                 "message": "New access token generated successfully.",
-                "tokens": response.data
+                "tokens": response.data,
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "name": getattr(user, "name", ""),
+                    "role": getattr(user, "role", "")
+                }
             }, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({

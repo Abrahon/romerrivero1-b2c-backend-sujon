@@ -232,6 +232,7 @@ class UserCategoryListView(generics.ListAPIView):
     queryset = ProductCategory.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [AllowAny] 
+    authentication_classes = []       
     pagination_class = None 
 
 
@@ -239,6 +240,7 @@ class UserCategoryListView(generics.ListAPIView):
 class UserCategoryProductListView(generics.ListAPIView):
     serializer_class = ProductSerializer
     permission_classes = [AllowAny]
+    authentication_classes = [] 
 
     def get_queryset(self):
         category_id = self.kwargs.get("category_id")
@@ -256,7 +258,8 @@ class UserCategoryProductListView(generics.ListAPIView):
 
 class TopProductsView(generics.ListAPIView):
     serializer_class = ProductSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [AllowAny]
+    authentication_classes = [] 
 
     def get_queryset(self):
         # Annotate average rating
@@ -294,6 +297,7 @@ class LimitedDealsPagination(PageNumberPagination):
 class LimitedDealsProductListView(generics.ListAPIView):
     serializer_class = ProductSerializer
     permission_classes = [AllowAny]
+    authentication_classes = [] 
     pagination_class = LimitedDealsPagination
 
     def get_queryset(self):
@@ -310,7 +314,8 @@ class LimitedDealsProductListView(generics.ListAPIView):
 
 class UserProductListView(generics.ListAPIView):
     serializer_class = ProductSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [AllowAny]
+    authentication_classes = [] 
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['category']
 
@@ -327,7 +332,8 @@ class UserProductListView(generics.ListAPIView):
 class UserProductLoadMoreView(generics.ListAPIView):
     queryset = Products.objects.filter(status=ProductStatus.ACTIVE)
     serializer_class = ProductSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [AllowAny]
+    authentication_classes = [] 
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['category']
     # disable pagination
@@ -338,6 +344,7 @@ class UserProductDetailView(generics.RetrieveAPIView):
     queryset = Products.objects.filter(status=ProductStatus.ACTIVE)
     serializer_class = ProductSerializer
     permission_classes = [AllowAny]
+    authentication_classes = [] 
     lookup_field = "id"    
     lookup_url_kwarg = "id"
 
@@ -345,6 +352,7 @@ class UserProductDetailView(generics.RetrieveAPIView):
 class UserProductSearchView(generics.ListAPIView):
     serializer_class = ProductSerializer
     permission_classes = [AllowAny]
+    authentication_classes = [] 
 
     def get_queryset(self):
         query = self.request.query_params.get("q", "")
@@ -378,6 +386,7 @@ class CategoryProductFilterPagination(PageNumberPagination):
 
 class CategoryProductFilterView(APIView):
     permission_classes = [permissions.AllowAny]
+    authentication_classes = [] 
 
     def get(self, request):
         query = request.query_params.get("q")
@@ -473,7 +482,8 @@ def similar(a, b):
 
 
 class ProductSearchFilterView(APIView):
-    permission_classes = [permissions.AllowAny]  
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []  
 
     def get(self, request):
         query = request.query_params.get("q", "")
@@ -580,6 +590,7 @@ class RelatedProductsView(generics.ListAPIView):
     """
     serializer_class = ProductSerializer
     permission_classes = [AllowAny]
+    authentication_classes = [] 
 
     def get_queryset(self):
         product_id = self.kwargs.get("product_id")
