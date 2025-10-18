@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google',  
     'allauth.socialaccount.providers.facebook',  
     'allauth.socialaccount.providers.twitter',
+    'rest_framework_simplejwt.token_blacklist',
     # new added for jwt token blacklisting
     # 'rest_framework',
     # 'rest_framework_simplejwt.token_blacklist',
@@ -73,7 +74,7 @@ INSTALLED_APPS = [
 ]
 ASGI_APPLICATION = "romerrivero1.asgi.application"   
 
-SITE_ID = 1
+SITE_ID = 1     
 
 CLOUDINARY_STORAGE = {
     "CLOUD_NAME": os.getenv("CLOUDINARY_CLOUD_NAME"),
@@ -250,12 +251,12 @@ REST_FRAMEWORK = {
 
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(seconds=10),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=15),
-    "ROTATE_REFRESH_TOKENS": True,                   # issue new refresh token each time
-    "BLACKLIST_AFTER_ROTATION": True, 
-    # "AUTH_HEADER_TYPES": ("Bearer",),
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=20),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
 }
+
 
 
 FRONTEND_REDIRECT_URL = "https://gamerbytes.us/google/callback"
