@@ -1,26 +1,21 @@
 from datetime import datetime, timedelta, date
 from decimal import Decimal
 from collections import Counter
-from b2c.user_profile.models import UserProfile  
 from django.utils.timezone import now
-from django.db.models import Sum, Count, F
+from django.db.models import Sum, Count, F, Min, Q
 from django.db.models.functions import TruncWeek, TruncMonth, TruncYear
-import phonenumbers
-from phonenumbers import geocoder
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
 from accounts.models import User
-from b2c.orders.models import Order, OrderItem
+from b2c.orders.models import Order, OrderItem, OrderStatus
 from b2c.reviews.models import Review
 from b2c.products.models import Products
 from visitors.models import Visitor
 from b2c.user_profile.models import UserProfile
 import phonenumbers
-from b2c.orders.models import OrderStatus
-from django.db.models import Min, Q
-from django.utils import timezone
-from datetime import datetime, date           
+from phonenumbers import geocoder
+
 def get_country_from_phone(phone):
     try:
         parsed = phonenumbers.parse(phone, None)
@@ -45,7 +40,6 @@ class DashboardOverview(APIView):
             total_income = orders.aggregate(total=Sum("final_amount"))["total"] or Decimal("0.00")
             total_sales = order_items.count()
             total_new_customers = users.count()
-            # total_orders_completed = orders.filter(order_status="DELIVERED").count()
             total_orders_completed = orders.filter(order_status=OrderStatus.DELIVERED).count()
 
             # Choose truncate function
@@ -78,7 +72,6 @@ class DashboardOverview(APIView):
                     .annotate(completed_orders=Count("id"))
                     .order_by("period")
                 )
-
             completed_map = {d["period"].date(): d["completed_orders"] for d in completed_data}
 
             # Visitors grouped by period
@@ -150,9 +143,6 @@ class DashboardOverview(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-
-    
 class AnalyticsView(APIView):
     permission_classes = [permissions.IsAdminUser]
     """
@@ -174,23 +164,27 @@ class AnalyticsView(APIView):
                 )
 
             today = now().date()
+            
+            # ✅ FIXED: Define start_date for ALL filters
+            if filter_type == "weekly":
+                start_date = today - timedelta(weeks=12)
+            elif filter_type == "monthly":
+                start_date = today.replace(day=1) - timedelta(days=365)
+            else:  # yearly
+                start_date = date(today.year - 5, 1, 1)
 
             # -------- User Growth --------
             total_users = User.objects.count()
 
             if filter_type == "weekly":
-                start_date = today - timedelta(weeks=12)  # last 12 weeks
-                period_format = "week"  # for response
-                users_qs = User.objects.filter(date_joined__gte=start_date)
                 growth_data = []
                 for i in range(12):
                     week_start = start_date + timedelta(weeks=i)
                     week_end = week_start + timedelta(days=6)
-                    count = users_qs.filter(date_joined__date__range=(week_start, week_end)).count()
+                    count = User.objects.filter(date_joined__date__range=(week_start, week_end)).count()
                     growth_data.append({"period": f"Week {i+1}", "count": count})
 
             elif filter_type == "monthly":
-                start_date = today.replace(day=1) - timedelta(days=365)  # last 12 months
                 growth_data = []
                 for i in range(12):
                     month = (today.month - i - 1) % 12 + 1
@@ -201,7 +195,7 @@ class AnalyticsView(APIView):
                     growth_data.insert(0, {"period": f"{year}-{month:02}", "count": count})
 
             else:  # yearly
-                start_year = today.year - 5  # last 6 years
+                start_year = today.year - 5
                 growth_data = []
                 for i in range(6):
                     year = start_year + i
@@ -217,51 +211,36 @@ class AnalyticsView(APIView):
             # -------- Order Statistics --------
             orders_in_range = Order.objects.all()
             if filter_type == "weekly":
-                orders_in_range = orders_in_range.filter(created_at__gte=today - timedelta(weeks=12))
+                orders_in_range = orders_in_range.filter(created_at__gte=start_date)
             elif filter_type == "monthly":
-                orders_in_range = orders_in_range.filter(created_at__gte=today - timedelta(days=365))
+                orders_in_range = orders_in_range.filter(created_at__gte=start_date)
             else:  # yearly
                 orders_in_range = orders_in_range.filter(created_at__year__gte=today.year - 5)
 
             order_stats = {
-                # "completed": orders_in_range.filter(order_status=OrderStatus.COMPLETED).count(),
                 "pending": orders_in_range.filter(order_status=OrderStatus.PENDING).count(),
                 "processing": orders_in_range.filter(order_status=OrderStatus.PROCESSING).count(),
                 "cancelled": orders_in_range.filter(order_status=OrderStatus.CANCELLED).count(),
                 "completed": orders_in_range.filter(order_status=OrderStatus.DELIVERED).count(),
             }
 
-            # # -------- Customer Segmentation --------
-            # new_customers = User.objects.filter(date_joined__gte=start_date).count()
-            # returning_customers = max(
-            #     orders_in_range.values("user").distinct().count() - new_customers, 0
-            # )
-            # customer_segmentation = {"new": new_customers, "returning": returning_customers}
-
-
             # -------- Customer Segmentation --------
-            # New customers: joined within the period
-            new_customers_qs = User.objects.filter(date_joined__gte=start_date)
-            new_customers = new_customers_qs.count()
-
+            new_customers = User.objects.filter(date_joined__gte=start_date).count()
+            
             # Returning customers: users with at least one previous non-cancelled order
             returning_customers_qs = (
                 User.objects.filter(
-                    orders__isnull=False  # 'orders' is the related_name in Order model
+                    orders__isnull=False
                 )
                 .exclude(orders__order_status=OrderStatus.CANCELLED)
                 .distinct()
             )
-            print("returning customers qs",returning_customers_qs)
-            # Optional: exclude users already counted as new, if you want exclusive segmentation
-            returning_customers = returning_customers_qs.exclude(id__in=new_customers_qs.values("id")).count()
-            print("returning customers",returning_customers)
+            returning_customers = returning_customers_qs.exclude(id__in=User.objects.filter(date_joined__gte=start_date).values("id")).count()
 
             customer_segmentation = {
                 "new": new_customers,
                 "returning": returning_customers
             }
-            # -------- Customer Segmentation --------
 
             # -------- Overall Selling (Top Products) --------
             order_items_qs = OrderItem.objects.filter(order__in=orders_in_range).values(
@@ -288,15 +267,14 @@ class AnalyticsView(APIView):
                 for item in order_items_qs
             ]
 
-                  # -------- Customer by Country (Phone-Based) --------
-
+            # -------- Customer by Country (Phone-Based) --------
             customer_profiles = UserProfile.objects.exclude(phone_number__isnull=True).exclude(phone_number__exact="")
             countries = []
 
             for profile in customer_profiles:
                 phone = profile.phone_number
                 try:
-                    parsed = phonenumbers.parse(phone, "BD")  # Use 'BD' as default if no country code
+                    parsed = phonenumbers.parse(phone, None)  # ✅ FIXED: Use None, not "BD"
                     country_name = geocoder.description_for_number(parsed, "en")
                     if country_name:
                         countries.append(country_name)
@@ -305,7 +283,6 @@ class AnalyticsView(APIView):
 
             top_countries = Counter(countries).most_common(10)
             customer_by_country = [{"country": c[0], "count": c[1]} for c in top_countries]
-
 
             # -------- Final Response --------
             data = {
