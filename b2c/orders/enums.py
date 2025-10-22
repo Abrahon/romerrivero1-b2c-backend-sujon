@@ -6,14 +6,14 @@ class PaymentStatus(models.TextChoices):
     DELIVERD = 'success', 'Deliverd'
     CANCELL = 'cancelled', 'Cancelled',
 
-
 class OrderStatus(models.TextChoices):
     PENDING = "pending", "Pending"
     PROCESSING = "processing", "Processing"
-    REJECTED = "rejected", "Rejected"
-    CANCELLED = "cancelled", "Cancelled"
-    COMPLETED = "completed", "Completed"
+    SHIPPED = "shipped", "Shipped"
+    OUT_FOR_DELIVERY = "out_for_delivery", "Out for Delivery"
     DELIVERED = "delivered", "Delivered"
+    CANCELLED = "cancelled", "Cancelled"
+
 
 
 

@@ -32,7 +32,7 @@ class CustomerSerializer(serializers.ModelSerializer):
     def get_total_spent(self, obj):
         return (
             Order.objects.filter(user=obj)
-            .aggregate(total=Sum("total_amount"))["total"] or 0
+            .aggregate(total=Sum("final_amount"))["total"] or 0
         )
 
     def get_cards_number(self, obj):

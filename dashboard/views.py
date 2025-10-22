@@ -84,19 +84,46 @@ class DashboardOverview(APIView):
             visitor_map = {d["period"].date(): d["visitors_count"] for d in visitor_data}
 
             # Build trend lists
+            # revenue_trend = []
+            # visitors_trend = []
+
+            # for i in range(periods):
+            #     if period == "weekly":
+            #         bucket_start = current_time - (i * 7 * timedelta(days=1))
+            #         bucket_start = bucket_start - timedelta(days=bucket_start.weekday())
+            #     elif period == "monthly":
+            #         bucket_start = current_time.replace(day=1) - i * timedelta(days=30)
+            #         bucket_start = bucket_start.replace(day=1)
+            #     elif period == "yearly":
+            #         bucket_start = current_time.replace(month=1, day=1) - i * timedelta(days=365)
+            #         bucket_start = bucket_start.replace(month=1, day=1)
+
+            #     key = bucket_start.date()
+            #     revenue_trend.append({
+            #         "period": bucket_start.strftime("%Y-%m-%d"),
+            #         "total_revenue": float(revenue_map.get(key, 0)),
+            #         "orders_completed": int(completed_map.get(key, 0)),
+            #     })
+            #     visitors_trend.append({
+            #         "period": bucket_start.strftime("%Y-%m-%d"),
+            #         "visitors": int(visitor_map.get(key, 0)),
+            #     })
+
+            # Build trend lists
             revenue_trend = []
             visitors_trend = []
 
             for i in range(periods):
                 if period == "weekly":
-                    bucket_start = current_time - (i * 7 * timedelta(days=1))
-                    bucket_start = bucket_start - timedelta(days=bucket_start.weekday())
+                    bucket_start = current_time - timedelta(days=i*7)
+                    bucket_start = bucket_start - timedelta(days=bucket_start.weekday())  # start of week
                 elif period == "monthly":
-                    bucket_start = current_time.replace(day=1) - i * timedelta(days=30)
-                    bucket_start = bucket_start.replace(day=1)
+                    month = (current_time.month - i - 1) % 12 + 1
+                    year = current_time.year - ((current_time.month - i - 1) // 12)
+                    bucket_start = current_time.replace(year=year, month=month, day=1)
                 elif period == "yearly":
-                    bucket_start = current_time.replace(month=1, day=1) - i * timedelta(days=365)
-                    bucket_start = bucket_start.replace(month=1, day=1)
+                    year = current_time.year - i
+                    bucket_start = current_time.replace(year=year, month=1, day=1)
 
                 key = bucket_start.date()
                 revenue_trend.append({
@@ -108,6 +135,7 @@ class DashboardOverview(APIView):
                     "period": bucket_start.strftime("%Y-%m-%d"),
                     "visitors": int(visitor_map.get(key, 0)),
                 })
+
 
             # Recent activity
             recent_reviews = Review.objects.order_by("-created_at")[:5].values(
@@ -209,6 +237,7 @@ class AnalyticsView(APIView):
             }
 
             # -------- Order Statistics --------
+
             orders_in_range = Order.objects.all()
             if filter_type == "weekly":
                 orders_in_range = orders_in_range.filter(created_at__gte=start_date)
@@ -224,23 +253,65 @@ class AnalyticsView(APIView):
                 "completed": orders_in_range.filter(order_status=OrderStatus.DELIVERED).count(),
             }
 
-            # -------- Customer Segmentation --------
-            new_customers = User.objects.filter(date_joined__gte=start_date).count()
-            
-            # Returning customers: users with at least one previous non-cancelled order
-            returning_customers_qs = (
-                User.objects.filter(
-                    orders__isnull=False
-                )
-                .exclude(orders__order_status=OrderStatus.CANCELLED)
-                .distinct()
-            )
-            returning_customers = returning_customers_qs.exclude(id__in=User.objects.filter(date_joined__gte=start_date).values("id")).count()
+            total_orders = sum(order_stats.values())
 
-            customer_segmentation = {
-                "new": new_customers,
-                "returning": returning_customers
-            }
+            # Avoid division by zero
+            if total_orders == 0:
+                order_percentages = {k: 0 for k in order_stats}
+            else:
+                # Calculate raw percentages
+                raw_percentages = {k: v / total_orders * 100 for k, v in order_stats.items()}
+
+                # Round each except the last
+                rounded_percentages = {}
+                keys = list(raw_percentages.keys())
+                for k in keys[:-1]:
+                    rounded_percentages[k] = round(raw_percentages[k], 2)
+
+                # Make last one = 100 - sum of others
+                rounded_percentages[keys[-1]] = round(100 - sum(rounded_percentages.values()), 2)
+
+                order_percentages = rounded_percentages
+
+            print(order_percentages)
+
+
+            # -------- Customer Segmentation --------
+       
+
+        # -------- Customer Counts --------
+            new_count = User.objects.filter(date_joined__gte=start_date).count()
+
+            returning_count = Order.objects.filter(
+                order_status__in=[
+                    OrderStatus.PENDING,
+                    OrderStatus.PROCESSING,
+                    OrderStatus.SHIPPED,
+                    OrderStatus.OUT_FOR_DELIVERY,
+                    OrderStatus.DELIVERED,
+        
+                ]
+            ).values('user_id') \
+            .annotate(total_orders=Count('id')) \
+            .filter(total_orders__gt=1) \
+            .count()
+
+            # -------- Total Customers --------
+            total_customers = new_count + returning_count
+
+            # -------- Percentages --------
+            if total_customers == 0:
+                customer_segmentation = {"new": 0, "returning": 0}
+            else:
+                new_percent = round(new_count / total_customers * 100, 2)
+                returning_percent = round(100 - new_percent, 2)
+                customer_segmentation = {"new": new_percent, "returning": returning_percent}
+
+            # -------- Use customer_segmentation --------
+            print(customer_segmentation)
+
+
+            
 
             # -------- Overall Selling (Top Products) --------
             order_items_qs = OrderItem.objects.filter(order__in=orders_in_range).values(

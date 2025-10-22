@@ -19,7 +19,8 @@ from .models import Products, ProductCategory
 from .serializers import ProductSerializer, CategorySerializer
 from .enums import ProductStatus
 from rest_framework.permissions import AllowAny
-# b2c/products/views.py
+
+from django.db.models import Count, Avg, DecimalField
 from rest_framework import generics
 from django.utils import timezone
 from django.db.models import Avg, DecimalField
@@ -258,20 +259,35 @@ class UserCategoryProductListView(generics.ListAPIView):
 
 class TopProductsView(generics.ListAPIView):
     serializer_class = ProductSerializer
-    permission_classes = [AllowAny]
-    authentication_classes = [] 
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
 
     def get_queryset(self):
-        # Annotate average rating
-        queryset = Products.objects.annotate(
-            average_rating=Coalesce(
-                Avg("reviews__rating"),
-                0.0,
-                output_field=DecimalField(max_digits=3, decimal_places=1)
+        # ✅ Only ACTIVE products and NOT limited deal products
+        queryset = (
+            Products.objects.filter(
+                status=ProductStatus.ACTIVE,
+                limited_deal_price=False,  
+                limited_deal_start=False,    
+                limited_deal_end=False    
             )
-        ).order_by('-average_rating', '-id')
+            .annotate(
+                total_sales=Count('orderitem'),  # count sales
+                average_rating=Coalesce(
+                    Avg('reviews__rating'),
+                    0.0,
+                    output_field=DecimalField(max_digits=3, decimal_places=1)
+                )
+            )
+            .order_by('-total_sales', '-id')  # most sold first, newest next
+        )
 
-        return queryset
+        return queryset[:10]  # top 10 products
+
+
+
+
+
 
 
 
@@ -306,7 +322,7 @@ class LimitedDealsProductListView(generics.ListAPIView):
             limited_deal_price__isnull=False,
             limited_deal_start__lte=now,
             limited_deal_end__gte=now,
-            status="active"
+            status=ProductStatus.ACTIVE
         ).order_by("-limited_deal_end")
 
 
@@ -401,7 +417,7 @@ class CategoryProductFilterView(APIView):
        average_rating=Avg("reviews__rating", output_field=FloatField())
       )
 
-        products = Products.objects.all().annotate(
+        products = Products.objects.filter(status=ProductStatus.ACTIVE).annotate(
     average_rating=Coalesce(Avg("reviews__rating", output_field=FloatField()), Value(0.0), output_field=FloatField())
 )
 

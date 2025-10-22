@@ -287,7 +287,7 @@ class OrderTrackingView(generics.RetrieveAPIView):
     permission_classes = [permissions.IsAuthenticated]  # Only the user can access their orders
 
     def get_object(self):
-        order_identifier = self.kwargs.get("order_identifier")  # e.g., "ORD-20250929223618-1e874b"
+        order_identifier = self.kwargs.get("order_identifier")  
         
         # Get the order
         order = get_object_or_404(Order, order_number=order_identifier, user=self.request.user)
@@ -300,20 +300,20 @@ class OrderTrackingView(generics.RetrieveAPIView):
             .first()
         )
         
-        # If no tracking exists, create initial
+
+        tracking = (
+            OrderTracking.objects.filter(order=order)
+            .select_related("order", "updated_by")
+            .order_by("-created_at")
+            .first()
+        )
+
         if not tracking:
             tracking = OrderTracking.objects.create(
                 order=order,
                 status=OrderStatus.PENDING,
-                note="Order automatically created"
-            )
-        
-        # Create new tracking record if order_status differs from latest tracking
-        if tracking.status != order.order_status:
-            tracking = OrderTracking.objects.create(
-                order=order,
-                status=order.order_status,
-                note=f"Order status updated to '{order.order_status}'"
+                note="Order created and awaiting processing.",
+                updated_by=order.user
             )
         
         return tracking       
@@ -360,7 +360,10 @@ class OrderListFilter(generics.ListAPIView):
         return Response(serializer.data)
 
 
-# admin update status 
+
+
+
+# ------------------- Admin: Update Order Status -------------------
 class AdminUpdateOrderStatusView(generics.UpdateAPIView):
     serializer_class = AdminOrderStatusUpdateSerializer
     permission_classes = [permissions.IsAdminUser]
@@ -369,22 +372,34 @@ class AdminUpdateOrderStatusView(generics.UpdateAPIView):
 
     def update(self, request, *args, **kwargs):
         order = self.get_object()
+        old_status = order.order_status  # Save previous status
+
         serializer = self.get_serializer(order, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        # Optional: Send notification to user
+        # ✅ Create tracking entry automatically when status changes
+        if old_status != order.order_status:
+            OrderTracking.objects.create(
+                order=order,
+                status=order.order_status,
+                note=f"Order status updated to '{order.order_status}'.",
+                updated_by=request.user,
+            )
+
+        # ✅ Optional: Send notification to customer
         Notification.objects.create(
             user=order.user,
             title=f"Order {order.order_number} status updated",
             message=f"Your order status has been updated to '{order.order_status}'."
         )
 
-        return Response({
+        return Response({  
             "message": f"Order {order.order_number} status updated successfully.",
             "order_id": order.id,
             "new_status": order.order_status
         }, status=status.HTTP_200_OK)
+
 
 
 

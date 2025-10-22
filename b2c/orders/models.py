@@ -70,7 +70,7 @@ class OrderItem(models.Model):
     #     on_delete=models.CASCADE,
     #     related_name="items"  # <-- check this line
     # )
-    product = models.ForeignKey("products.Products", on_delete=models.CASCADE)
+    product = models.ForeignKey("products.Products", on_delete=models.CASCADE, related_name='orderitem')
     quantity = models.PositiveIntegerField()
     price = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
 
