@@ -7,7 +7,7 @@ import re
 PHONE_REGEX = re.compile(r'^\+?\d{7,15}$')
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    full_name = serializers.CharField(source="user.name", read_only=True)
+    full_name = serializers.CharField(source="user.name", read_only=False)
     profile_image_url = serializers.SerializerMethodField()
     contact_email = serializers.CharField(source="user.email", read_only=True)
 
@@ -20,6 +20,17 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'emergency_contact_phone', 'emergency_contact_relationship'
         ]
         read_only_fields = ['contact_email']
+    
+    def update(self, instance, validated_data):
+        # Extract nested 'user' data if provided
+        user_data = validated_data.pop('user', None)
+        if user_data:
+            name = user_data.get('name')
+            if name:
+                instance.user.name = name
+                instance.user.save()
+
+        return super().update(instance, validated_data)
 
     def get_profile_image_url(self, obj):
         if obj.profile_image:

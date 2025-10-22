@@ -19,6 +19,8 @@ from django.conf import settings
 from django.shortcuts import redirect
 import time
 import datetime
+from urllib.parse import urlencode, unquote
+
 
 User = get_user_model()
 
@@ -198,40 +200,96 @@ class GoogleCallbackView(APIView):
         jwt_token = str(refresh.access_token)
         return redirect(f"{settings.FRONTEND_REDIRECT_URL}?token={jwt_token}")
 
+# class GoogleExchangeView(APIView):
+#     permission_classes = [AllowAny]
+#     def post(self, request):
+#         code = request.data.get("code")
+#         if not code:
+#             return Response({"error": "Code is required"}, status=400)
+#         token_url = "https://oauth2.googleapis.com/token"
+#         data = {
+#             "code": urlencode(code), "client_id": settings.GOOGLE_CLIENT_ID,
+#             "client_secret": settings.GOOGLE_CLIENT_SECRET,
+#             "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+#             "grant_type": "authorization_code",
+#         }
+#         r = requests.post(token_url, data=data)
+#         if r.status_code != 200:
+#             return Response({"error": r.json()}, status=400)
+#         token_data = r.json()
+#         access_token = token_data.get("access_token")
+#         if not access_token:
+#             return Response({"error": "Invalid access token"}, status=400)
+#         user_info = requests.get(
+#             "https://www.googleapis.com/oauth2/v3/userinfo",
+#             headers={"Authorization": f"Bearer {access_token}"}
+#         ).json()
+#         email = user_info.get("email")
+#         name = user_info.get("name", "")
+#         if not email:
+#             return Response({"error": "No email from Google"}, status=400)
+#         user, _ = User.objects.get_or_create(email=email, defaults={"name": name})
+#         refresh = RefreshToken.for_user(user)
+#         return Response({
+#             "user": {"id": user.id, "email": user.email, "name": user.name},
+#             "refresh": str(refresh), "access": str(refresh.access_token),
+#         })
+
 class GoogleExchangeView(APIView):
     permission_classes = [AllowAny]
+
     def post(self, request):
         code = request.data.get("code")
         if not code:
             return Response({"error": "Code is required"}, status=400)
+
         token_url = "https://oauth2.googleapis.com/token"
         data = {
-            "code": urlencode(code), "client_id": settings.GOOGLE_CLIENT_ID,
+            "code": unquote(code),
+            "client_id": settings.GOOGLE_CLIENT_ID,
             "client_secret": settings.GOOGLE_CLIENT_SECRET,
             "redirect_uri": settings.GOOGLE_REDIRECT_URI,
             "grant_type": "authorization_code",
         }
+
         r = requests.post(token_url, data=data)
         if r.status_code != 200:
             return Response({"error": r.json()}, status=400)
+        
         token_data = r.json()
         access_token = token_data.get("access_token")
         if not access_token:
             return Response({"error": "Invalid access token"}, status=400)
+
         user_info = requests.get(
             "https://www.googleapis.com/oauth2/v3/userinfo",
             headers={"Authorization": f"Bearer {access_token}"}
         ).json()
+
         email = user_info.get("email")
         name = user_info.get("name", "")
+
         if not email:
             return Response({"error": "No email from Google"}, status=400)
-        user, _ = User.objects.get_or_create(email=email, defaults={"name": name})
+
+        # Only use fields that exist in your custom User model
+        user, _ = User.objects.get_or_create(
+            email=email,
+            defaults={"name": name}
+        )
+
         refresh = RefreshToken.for_user(user)
+
         return Response({
-            "user": {"id": user.id, "email": user.email, "name": user.name},
-            "refresh": str(refresh), "access": str(refresh.access_token),
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "name": user.name,
+            },
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
         })
+    
 
 class GoogleSignupView(APIView):
     permission_classes = [AllowAny]

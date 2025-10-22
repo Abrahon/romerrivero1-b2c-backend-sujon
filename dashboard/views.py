@@ -267,22 +267,53 @@ class AnalyticsView(APIView):
                 for item in order_items_qs
             ]
 
-            # -------- Customer by Country (Phone-Based) --------
+            # # -------- Customer by Country (Phone-Based) --------
+            # customer_profiles = UserProfile.objects.exclude(phone_number__isnull=True).exclude(phone_number__exact="")
+            # countries = []
+
+            # for profile in customer_profiles:
+            #     phone = profile.phone_number
+            #     print( "Processing phone number:", phone)  
+            #     try:
+            #         parsed = phonenumbers.parse(phone, None)  # ✅ FIXED: Use None, not "BD"
+            #         country_name = geocoder.description_for_number(parsed, "en")
+            #         print("Detected country:", country_name)
+            #         if country_name:
+            #             countries.append(country_name)
+            #     except Exception:
+            #         continue
+
+            # top_countries = Counter(countries).most_common(10)
+            # print("Top countries:", top_countries)
+            # customer_by_country = [{"country": c[0], "count": c[1]} for c in top_countries]
+
+
+
             customer_profiles = UserProfile.objects.exclude(phone_number__isnull=True).exclude(phone_number__exact="")
             countries = []
 
             for profile in customer_profiles:
                 phone = profile.phone_number
                 try:
-                    parsed = phonenumbers.parse(phone, None)  # ✅ FIXED: Use None, not "BD"
-                    country_name = geocoder.description_for_number(parsed, "en")
-                    if country_name:
-                        countries.append(country_name)
-                except Exception:
+                    # Try parsing assuming BD as fallback
+                    parsed = phonenumbers.parse(phone, None)
+                    if not phonenumbers.is_valid_number(parsed):
+                        parsed = phonenumbers.parse(phone, "BD")  # fallback
+
+                    region_code = phonenumbers.region_code_for_number(parsed)
+                    if region_code:
+                        country_name = phonenumbers.geocoder.country_name_for_number(parsed, "en")
+                        if country_name:
+                            countries.append(country_name)
+                except Exception as e:
+                    print(f"Error parsing {phone}: {e}")
                     continue
 
             top_countries = Counter(countries).most_common(10)
+            print("Top countries:", top_countries)
             customer_by_country = [{"country": c[0], "count": c[1]} for c in top_countries]
+            print("Top countries:", customer_by_country)
+
 
             # -------- Final Response --------
             data = {
