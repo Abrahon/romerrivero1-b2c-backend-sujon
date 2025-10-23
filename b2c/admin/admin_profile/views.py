@@ -24,46 +24,107 @@ from .models import AdminProfile
 from .serializers import AdminProfileSerializer
 from rest_framework import serializers
 
+# class AdminProfileView(generics.RetrieveUpdateDestroyAPIView):
+#     """
+#     GET  /api/admin-profile/    -> retrieve current admin's profile (auto-create if missing)
+#     PATCH /api/admin-profile/   -> partial update (recommended for image uploads)
+#     PUT  /api/admin-profile/    -> full update
+#     DELETE /api/admin-profile/ -> delete admin profile from DB
+#     """
+#     serializer_class = AdminProfileSerializer
+#     permission_classes = [IsAdminUser]
+#     parser_classes = [MultiPartParser, FormParser, JSONParser]
+#     pagination_class = None 
+
+#     def get_object(self):
+#         # Auto-create profile if it doesn't exist
+#         profile, created = AdminProfile.objects.get_or_create(
+#             user=self.request.user,
+#             defaults={
+#                 "first_name": getattr(self.request.user, "first_name", ""),
+#                 "last_name": getattr(self.request.user, "last_name", ""),
+#             }
+#         )
+#         return profile
+
+#     def update(self, request, *args, **kwargs):
+#         partial = kwargs.pop('partial', True)  # default to partial update
+#         instance = self.get_object()
+#         serializer = self.get_serializer(instance, data=request.data, partial=partial)
+#         serializer.is_valid(raise_exception=True)
+#         serializer.save()
+#         return Response(
+#             {"message": "Profile updated successfully", "data": serializer.data},
+#             status=status.HTTP_200_OK
+#         )
+
+#     def destroy(self, request, *args, **kwargs):
+#         instance = self.get_object()
+#         instance.delete()
+#         return Response(
+#             {"message": "Profile deleted successfully"},
+#             status=status.HTTP_200_OK
+#         )
+from rest_framework import generics, status, permissions
+from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from django.core.exceptions import ValidationError
+from .models import AdminProfile
+from .serializers import AdminProfileSerializer
+
+
 class AdminProfileView(generics.RetrieveUpdateDestroyAPIView):
     """
-    GET  /api/admin-profile/    -> retrieve current admin's profile (auto-create if missing)
-    PATCH /api/admin-profile/   -> partial update (recommended for image uploads)
-    PUT  /api/admin-profile/    -> full update
-    DELETE /api/admin-profile/ -> delete admin profile from DB
+    GET     /api/admin-profile/   -> Retrieve current admin profile (auto-create if missing)
+    PATCH   /api/admin-profile/   -> Partial update (recommended for image uploads)
+    PUT     /api/admin-profile/   -> Full update
+    DELETE  /api/admin-profile/   -> Delete admin profile
     """
     serializer_class = AdminProfileSerializer
-    permission_classes = [IsAdminUser]
+    permission_classes = [permissions.IsAdminUser]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
-    pagination_class = None 
+    pagination_class = None
 
     def get_object(self):
-        # Auto-create profile if it doesn't exist
+        # Auto-create if missing
         profile, created = AdminProfile.objects.get_or_create(
             user=self.request.user,
             defaults={
                 "first_name": getattr(self.request.user, "first_name", ""),
                 "last_name": getattr(self.request.user, "last_name", ""),
-            }
+            },
         )
         return profile
 
     def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', True)  # default to partial update
         instance = self.get_object()
+        partial = kwargs.pop("partial", True)
+
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(
-            {"message": "Profile updated successfully", "data": serializer.data},
-            status=status.HTTP_200_OK
-        )
+        try:
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(
+                {"message": "Profile updated successfully", "data": serializer.data},
+                status=status.HTTP_200_OK,
+            )
+        except ValidationError as e:
+            return Response(
+                {"error": "Validation error", "details": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception as e:
+            return Response(
+                {"error": "An unexpected error occurred", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         instance.delete()
         return Response(
             {"message": "Profile deleted successfully"},
-            status=status.HTTP_200_OK
+            status=status.HTTP_200_OK,
         )
 
 

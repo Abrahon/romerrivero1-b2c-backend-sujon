@@ -4,7 +4,7 @@ from datetime import timedelta
 from dotenv import load_dotenv
 import dj_database_url
 from decouple import config
-
+from PIL import Image
 # Load environment variables from the .env file
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(os.path.join(BASE_DIR, '.env'))
@@ -206,6 +206,9 @@ SIMPLE_JWT = {
 FRONTEND_REDIRECT_URL = "https://gamerbytes.us/google/callback"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# high resualation image upload 
+Image.MAX_IMAGE_PIXELS = None
 
 # Security settings for production
 if not DEBUG:

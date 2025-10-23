@@ -316,7 +316,7 @@ class AnalyticsView(APIView):
             # -------- Overall Selling (Top Products) --------
             order_items_qs = OrderItem.objects.filter(order__in=orders_in_range).values(
                 "product_id", "product__title"
-            ).annotate(quantity_sold=Sum("quantity")).order_by("-quantity_sold")[:10]
+            ).annotate(quantity_sold=Sum("quantity")).order_by("-quantity_sold")[:5]
 
             def rating_label(qty):
                 if qty >= 30:

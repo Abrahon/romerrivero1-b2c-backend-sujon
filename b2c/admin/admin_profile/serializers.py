@@ -11,9 +11,11 @@ from django.contrib.auth import authenticate
 
 
 
+from rest_framework import serializers
+from .models import AdminProfile
+
 class AdminProfileSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
-    first_name = serializers.CharField(source="user.name", read_only=True)
 
     class Meta:
         model = AdminProfile
@@ -27,25 +29,27 @@ class AdminProfileSerializer(serializers.ModelSerializer):
         ]
 
     def get_image_url(self, obj):
-        if obj.image:
-            return obj.image.url
+        request = self.context.get("request")
+        if obj.image and hasattr(obj.image, "url"):
+            return request.build_absolute_uri(obj.image.url)
         return None
 
-    def update(self, instance, validated_data):
-        # Update nested user fields
-        user_data = validated_data.pop("user", {})
-        if "first_name" in user_data:
-            instance.user.first_name = user_data["first_name"]
-        if "last_name" in user_data:
-            instance.user.last_name = user_data["last_name"]
-        instance.user.save()
+    def validate_image(self, image):
+        # ✅ Optional: Restrict size or type
+        if image.size > 5 * 1024 * 1024:  # 5MB limit
+            raise serializers.ValidationError("Image file too large (max 5MB).")
+        if not image.content_type.startswith("image/"):
+            raise serializers.ValidationError("Only image files are allowed.")
+        return image
 
-        # Update AdminProfile fields
+    def update(self, instance, validated_data):
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
         return instance
 
+
+       
 
 class CompanyDetailsSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
