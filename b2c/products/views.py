@@ -257,35 +257,32 @@ class UserCategoryProductListView(generics.ListAPIView):
 
 
 
+
 class TopProductsView(generics.ListAPIView):
     serializer_class = ProductSerializer
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
 
     def get_queryset(self):
-        # ✅ Only ACTIVE products and NOT limited deal products
         queryset = (
             Products.objects.filter(
                 status=ProductStatus.ACTIVE,
-                limited_deal_price=False,  
-                limited_deal_start=False,    
-                limited_deal_end=False    
+                limited_deal_price__isnull=True,  # ✅ no special price
+                limited_deal_start__isnull=True,  # ✅ no start date
+                limited_deal_end__isnull=True,    # ✅ no end date
             )
             .annotate(
-                total_sales=Count('orderitem'),  # count sales
+                total_sales=Count("orderitem"),
                 average_rating=Coalesce(
-                    Avg('reviews__rating'),
+                    Avg("reviews__rating"),
                     0.0,
-                    output_field=DecimalField(max_digits=3, decimal_places=1)
-                )
+                    output_field=DecimalField(max_digits=3, decimal_places=1),
+                ),
             )
-            .order_by('-total_sales', '-id')  # most sold first, newest next
+            .order_by("-total_sales", "-id")[:10]
         )
 
-        return queryset[:10]  # top 10 products
-
-
-
+        return queryset
 
 
 

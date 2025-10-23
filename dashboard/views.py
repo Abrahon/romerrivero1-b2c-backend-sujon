@@ -15,6 +15,12 @@ from visitors.models import Visitor
 from b2c.user_profile.models import UserProfile
 import phonenumbers
 from phonenumbers import geocoder
+from django.db.models import Sum, Count, Avg, DecimalField
+from django.db.models.functions import Coalesce, TruncWeek, TruncMonth, TruncYear
+
+
+
+
 
 def get_country_from_phone(phone):
     try:
@@ -22,6 +28,9 @@ def get_country_from_phone(phone):
         return geocoder.description_for_number(parsed, "en") or "Unknown"
     except Exception:
         return "Unknown"
+    
+
+
 
 class DashboardOverview(APIView):
     permission_classes = [permissions.IsAdminUser]
@@ -53,89 +62,72 @@ class DashboardOverview(APIView):
                 truncate_func = TruncYear
                 periods = 5
             else:
-                return Response({"error": "Invalid period. Use weekly, monthly, or yearly."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": "Invalid period. Use weekly, monthly, or yearly."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             # Revenue grouped by period
             revenue_data = (
                 orders.annotate(period=truncate_func("created_at"))
-                      .values("period")
-                      .annotate(total_revenue=Sum("final_amount"))
-                      .order_by("period")
+                .values("period")
+                .annotate(total_revenue=Sum("final_amount"))
+                .order_by("period")
             )
             revenue_map = {d["period"].date(): d["total_revenue"] for d in revenue_data}
 
             # Completed orders grouped by period
             completed_data = (
                 orders.filter(order_status=OrderStatus.DELIVERED)
-                    .annotate(period=truncate_func("created_at"))
-                    .values("period")
-                    .annotate(completed_orders=Count("id"))
-                    .order_by("period")
-                )
+                .annotate(period=truncate_func("created_at"))
+                .values("period")
+                .annotate(completed_orders=Count("id"))
+                .order_by("period")
+            )
             completed_map = {d["period"].date(): d["completed_orders"] for d in completed_data}
 
             # Visitors grouped by period
             visitor_data = (
                 Visitor.objects.annotate(period=truncate_func("last_visit"))
-                               .values("period")
-                               .annotate(visitors_count=Count("id"))
-                               .order_by("period")
+                .values("period")
+                .annotate(visitors_count=Count("id"))
+                .order_by("period")
             )
             visitor_map = {d["period"].date(): d["visitors_count"] for d in visitor_data}
 
-            # Build trend lists
-            # revenue_trend = []
-            # visitors_trend = []
-
-            # for i in range(periods):
-            #     if period == "weekly":
-            #         bucket_start = current_time - (i * 7 * timedelta(days=1))
-            #         bucket_start = bucket_start - timedelta(days=bucket_start.weekday())
-            #     elif period == "monthly":
-            #         bucket_start = current_time.replace(day=1) - i * timedelta(days=30)
-            #         bucket_start = bucket_start.replace(day=1)
-            #     elif period == "yearly":
-            #         bucket_start = current_time.replace(month=1, day=1) - i * timedelta(days=365)
-            #         bucket_start = bucket_start.replace(month=1, day=1)
-
-            #     key = bucket_start.date()
-            #     revenue_trend.append({
-            #         "period": bucket_start.strftime("%Y-%m-%d"),
-            #         "total_revenue": float(revenue_map.get(key, 0)),
-            #         "orders_completed": int(completed_map.get(key, 0)),
-            #     })
-            #     visitors_trend.append({
-            #         "period": bucket_start.strftime("%Y-%m-%d"),
-            #         "visitors": int(visitor_map.get(key, 0)),
-            #     })
-
-            # Build trend lists
+            # --- Build trend lists ---
             revenue_trend = []
             visitors_trend = []
 
             for i in range(periods):
                 if period == "weekly":
-                    bucket_start = current_time - timedelta(days=i*7)
-                    bucket_start = bucket_start - timedelta(days=bucket_start.weekday())  # start of week
+                    bucket_start = current_time - timedelta(days=i * 7)
+                    bucket_start = bucket_start - timedelta(days=bucket_start.weekday())
+                    display_period = bucket_start.strftime("%Y-%m-%d")
+
                 elif period == "monthly":
-                    month = (current_time.month - i - 1) % 12 + 1
-                    year = current_time.year - ((current_time.month - i - 1) // 12)
+                    # ✅ Fixed month/year calculation
+                    total_month_index = current_time.year * 12 + (current_time.month - 1) - i
+                    year = total_month_index // 12
+                    month = (total_month_index % 12) + 1
                     bucket_start = current_time.replace(year=year, month=month, day=1)
+                    display_period = bucket_start.strftime("%Y-%m")
+
                 elif period == "yearly":
                     year = current_time.year - i
                     bucket_start = current_time.replace(year=year, month=1, day=1)
+                    display_period = str(year)
 
                 key = bucket_start.date()
                 revenue_trend.append({
-                    "period": bucket_start.strftime("%Y-%m-%d"),
+                    "period": display_period,
                     "total_revenue": float(revenue_map.get(key, 0)),
                     "orders_completed": int(completed_map.get(key, 0)),
                 })
                 visitors_trend.append({
-                    "period": bucket_start.strftime("%Y-%m-%d"),
+                    "period": display_period,
                     "visitors": int(visitor_map.get(key, 0)),
                 })
-
 
             # Recent activity
             recent_reviews = Review.objects.order_by("-created_at")[:5].values(
@@ -148,8 +140,8 @@ class DashboardOverview(APIView):
             # Best-selling products
             best_selling_products = (
                 OrderItem.objects.values("product__id", "product__title")
-                                 .annotate(total_sold=Sum("quantity"))
-                                 .order_by("-total_sold")[:5]
+                .annotate(total_sold=Sum("quantity"))
+                .order_by("-total_sold")[:5]
             )
 
             response_data = {
@@ -157,7 +149,7 @@ class DashboardOverview(APIView):
                 "total_sales": total_sales,
                 "total_new_customers": total_new_customers,
                 "total_orders_completed": total_orders_completed,
-                "revenue_trend": revenue_trend[::-1],  
+                "revenue_trend": revenue_trend[::-1],
                 "visitors_trend": visitors_trend[::-1],
                 "recent_activity": {
                     "recent_orders": list(recent_orders),
@@ -337,26 +329,6 @@ class AnalyticsView(APIView):
                 }
                 for item in order_items_qs
             ]
-
-            # # -------- Customer by Country (Phone-Based) --------
-            # customer_profiles = UserProfile.objects.exclude(phone_number__isnull=True).exclude(phone_number__exact="")
-            # countries = []
-
-            # for profile in customer_profiles:
-            #     phone = profile.phone_number
-            #     print( "Processing phone number:", phone)  
-            #     try:
-            #         parsed = phonenumbers.parse(phone, None)  # ✅ FIXED: Use None, not "BD"
-            #         country_name = geocoder.description_for_number(parsed, "en")
-            #         print("Detected country:", country_name)
-            #         if country_name:
-            #             countries.append(country_name)
-            #     except Exception:
-            #         continue
-
-            # top_countries = Counter(countries).most_common(10)
-            # print("Top countries:", top_countries)
-            # customer_by_country = [{"country": c[0], "count": c[1]} for c in top_countries]
 
 
 
