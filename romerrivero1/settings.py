@@ -126,7 +126,7 @@ MIDDLEWARE = [
 ]
 
 # CORS settings
-CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:3000,http://10.10.13.15:3000').split(',')
+CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:3000,http://10.10.13.15:3000,https://b2c-kohl.vercel.app').split(',')
 
 # Stripe settings
 STRIPE_PUBLIC_KEY = os.getenv('STRIPE_PUBLIC_KEY')
@@ -221,7 +221,9 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
  
-FRONTEND_REDIRECT_URL = "https://gamerbytes.us/google/callback"
+# FRONTEND_REDIRECT_URL = "https://gamerbytes.us/google/callback"
+
+FRONTEND_REDIRECT_URL = "https://b2c-kohl.vercel.app/google/callback"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
